@@ -16,7 +16,9 @@ know whether this package might be useful for them.
 
 ## Features
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
+Basic & easy to use set of basic streams with easy access to the latest emitted value
+
+TODO: Finish description
 
 ## Getting started
 

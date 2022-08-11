@@ -1,5 +1,5 @@
 name: value_stream
-description: Flutter package that provides a set of basic streams with easy access to the lattest emited value
+description: Flutter package that provides a set of basic streams with easy access to the latest emitted value
 version: 0.0.1
 repository: https://github.com/IcySunStudio/value_stream
 issue_tracker: https://github.com/IcySunStudio/value_stream/issues
