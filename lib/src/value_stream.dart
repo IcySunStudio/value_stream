@@ -1,14 +1,12 @@
 import 'dart:async';
 
-/// [StreamWithValue] implementation that creates a [Stream] from subsequent
-/// calls to [add]. This way, [value] is always set to the latest value that has
-/// been [add]ed, regardless of whether the [updates] are listened to (in
-/// contrast to [StreamWithLatestValue]).
+/// A broadcast [Stream] with access to the latest emitted value.
+/// Does explicitly not handle errors to provide a direct access to the value.
 class ValueStream<T> implements Sink<T> {
+  ValueStream(T initialValue) : _latestValue = initialValue;
+
   final _controller = StreamController<T>.broadcast();
   T _latestValue;
-
-  ValueStream(T initialValue) : _latestValue = initialValue;
 
   /// Push [data] to the stream.
   /// Ignored if [skipIfClosed] is true and the stream is closed.
@@ -35,6 +33,11 @@ class ValueStream<T> implements Sink<T> {
   /// The current [value] itself typically is not sent upon [Stream.listen] to
   /// [updates], although this detail is implementation defined.
   StreamSubscription<T> listen(void Function(T data)? onData, {void Function()? onDone}) => _controller.stream.listen(onData, onDone: onDone);
+
+  /// Access to the inner stream.
+  /// This stream will never contains errors because ValueStream explicitly don't handle them.
+  /// TODO change so ValueStream extends Stream directly like BehaviorSubject, so it's easier to use ? But Stream has error handling by default, and one goal of ValueStream is to exclude Errors.
+  Stream<T> get innerStream => _controller.stream;
 
   /// Whether the stream is closed for adding more events.
   bool get isClosed => _controller.isClosed;
