@@ -31,31 +31,11 @@ class DataValueStreamBuilder<T> extends StreamBuilderBase<T, T> {
   Widget build(BuildContext context, T currentSummary) => builder(context, currentSummary);
 }
 
-typedef EventWidgetBuilder<T> = Widget Function(BuildContext context, EventSnapshot<T> snapshot);
-
-class EventValueStreamBuilder<T> extends StreamBuilderBase<T, EventSnapshot<T>> {
+class EventValueStreamBuilder<T> extends StreamBuilder<T> {
   /// TODO doc
   EventValueStreamBuilder({
     super.key,
     required EventValueStream<T> stream,
-    required this.builder,
-  }) : initialData = stream.valueOrNull, super(stream: stream.innerStream);
-
-  final T? initialData;
-
-  final EventWidgetBuilder<T> builder;
-
-  @override
-  EventSnapshot<T> initial() => initialData == null
-      ? EventSnapshot<T>.nothing()
-      : EventSnapshot<T>.withData(initialData as T);
-
-  @override
-  EventSnapshot<T> afterData(EventSnapshot<T> current, T data) => EventSnapshot<T>.withData(data);
-
-  @override
-  EventSnapshot<T> afterError(EventSnapshot<T> current, Object error, StackTrace stackTrace) => EventSnapshot<T>.withError(error, stackTrace);
-
-  @override
-  Widget build(BuildContext context, EventSnapshot<T> currentSummary) => builder(context, currentSummary);
+    required super.builder,
+  }) : super(initialData: stream.valueOrNull, stream: stream.innerStream);
 }
