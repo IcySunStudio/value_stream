@@ -51,8 +51,8 @@ abstract class ValueStream<T> implements Sink<T> {
 
 /// A broadcast [Stream] with access to the latest emitted value.
 /// Does explicitly NOT handle errors to provide a direct and simple access to the [value].
-class DataValueStream<T> extends ValueStream<T> {
-  DataValueStream(T initialValue) : super(initialValue);
+class DataStream<T> extends ValueStream<T> {
+  DataStream(T initialValue) : super(initialValue);
 
   late T _latestValue;
 
@@ -70,8 +70,8 @@ class DataValueStream<T> extends ValueStream<T> {
 }
 
 /// A broadcast [Stream] with access to the latest emitted value, with error handling.
-class EventValueStream<T> extends ValueStream<T> {
-  EventValueStream([super.initialValue]);
+class EventStream<T> extends ValueStream<T> {
+  EventStream([super.initialValue]);
 
   EventSnapshot<T> _latestSnapshot = const EventSnapshot.nothing();
 

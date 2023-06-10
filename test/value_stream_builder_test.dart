@@ -3,12 +3,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:value_stream/value_stream.dart';
 
 void main() {
-  group('DataValueStreamBuilder', () {
+  group('DataStreamBuilder', () {
     testWidgets('Widget is rebuilt with new stream value when it is updated', (WidgetTester tester) async {
-      final vs = DataValueStream(1);
+      final vs = DataStream(1);
 
       await tester.pumpWidget(MaterialApp(
-        home: DataValueStreamBuilder<int>(
+        home: DataStreamBuilder<int>(
           stream: vs,
           builder: (context, value) => Text('$value'),
         ),
@@ -23,13 +23,13 @@ void main() {
     });
   });
 
-  group('EventValueStreamBuilder', () {
-    /// Because [EventValueStreamBuilder] is based on [StreamBuilder], deep testing is not needed
+  group('EventStreamBuilder', () {
+    /// Because [EventStreamBuilder] is based on [StreamBuilder], deep testing is not needed
     testWidgets('Widget is rebuilt with new stream value when it is updated', (WidgetTester tester) async {
-      final vs = EventValueStream(1);
+      final vs = EventStream(1);
 
       await tester.pumpWidget(MaterialApp(
-        home: EventValueStreamBuilder<int>(
+        home: EventStreamBuilder<int>(
           stream: vs,
           builder: (context, snapshot) => Text('${snapshot.data}'),
         ),

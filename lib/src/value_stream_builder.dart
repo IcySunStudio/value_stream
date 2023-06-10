@@ -5,12 +5,12 @@ import 'value_stream.dart';
 /// Signature for strategies that build widgets based on provided data
 typedef DataWidgetBuilder<T> = Widget Function(BuildContext context, T value);
 
-/// Widget that builds itself based on the latest value a [DataValueStream].
-class DataValueStreamBuilder<T> extends StreamBuilderBase<T, T> {
-  /// Widget that builds itself based on the latest value a [DataValueStream].
-  DataValueStreamBuilder({
+/// Widget that builds itself based on the latest value a [DataStream].
+class DataStreamBuilder<T> extends StreamBuilderBase<T, T> {
+  /// Widget that builds itself based on the latest value a [DataStream].
+  DataStreamBuilder({
     super.key,
-    required DataValueStream<T> stream,
+    required DataStream<T> stream,
     required this.builder,
   }) : initialData = stream.value, super(stream: stream.innerStream);
 
@@ -31,12 +31,12 @@ class DataValueStreamBuilder<T> extends StreamBuilderBase<T, T> {
   Widget build(BuildContext context, T currentSummary) => builder(context, currentSummary);
 }
 
-/// Widget that builds itself based on the latest value a [EventValueStream].
-class EventValueStreamBuilder<T> extends StreamBuilder<T> {
-  /// Widget that builds itself based on the latest value a [EventValueStream].
-  EventValueStreamBuilder({
+/// Widget that builds itself based on the latest value a [EventStream].
+class EventStreamBuilder<T> extends StreamBuilder<T> {
+  /// Widget that builds itself based on the latest value a [EventStream].
+  EventStreamBuilder({
     super.key,
-    required EventValueStream<T> stream,
+    required EventStream<T> stream,
     required super.builder,
   }) : super(initialData: stream.valueOrNull, stream: stream.innerStream);
 }

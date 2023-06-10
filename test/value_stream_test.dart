@@ -5,13 +5,13 @@ import 'package:value_stream/value_stream.dart';
 void main() {
   group('ValueStream', () {
     test('takes initialValue', () {
-      final vs = DataValueStream(42);
+      final vs = DataStream(42);
       expect(vs.value, 42);
       vs.close();
     });
 
     test('updates value on add()', () {
-      final vs = DataValueStream(42);
+      final vs = DataStream(42);
       expect(vs.value, 42);
 
       vs.add(43);
@@ -21,7 +21,7 @@ void main() {
     });
 
     test('only latest value', () {
-      final vs = DataValueStream(1);
+      final vs = DataStream(1);
 
       vs.add(2);
       vs.add(3);
@@ -32,7 +32,7 @@ void main() {
     });
 
     test('works with nullables', () {
-      final vs = DataValueStream<int?>(null);
+      final vs = DataStream<int?>(null);
       expect(vs.value, isNull);
 
       vs.add(45);
@@ -48,7 +48,7 @@ void main() {
     });
 
     test('isClosed set after close()', () {
-      final vs = DataValueStream(42);
+      final vs = DataStream(42);
       expect(vs.isClosed, isFalse);
 
       vs.close();
@@ -56,7 +56,7 @@ void main() {
     });
 
     test('listen() push updates', () async {
-      final vs = DataValueStream(0);
+      final vs = DataStream(0);
       expect(vs.value, 0);
 
       final values = <int>[];
@@ -75,7 +75,7 @@ void main() {
     });
 
     test('add() arguments', () async {
-      final vs = DataValueStream<int?>(0);
+      final vs = DataStream<int?>(0);
       expect(vs.value, 0);
 
       final values = <int?>[];
@@ -106,15 +106,15 @@ void main() {
     });
   });
 
-  group('EventValueStream', () {
+  group('EventStream', () {
     test('takes initialValue', () {
-      final vs = EventValueStream(42);
+      final vs = EventStream(42);
       expect(vs.valueOrNull, 42);
       vs.close();
     });
 
     test('updates value on add()', () {
-      final vs = EventValueStream(42);
+      final vs = EventStream(42);
       expect(vs.valueOrNull, 42);
 
       vs.add(43);
@@ -124,7 +124,7 @@ void main() {
     });
 
     test('only latest value', () {
-      final vs = EventValueStream(1);
+      final vs = EventStream(1);
 
       vs.add(2);
       vs.add(3);
@@ -135,7 +135,7 @@ void main() {
     });
 
     test('works with nullables', () {
-      final vs = EventValueStream<int?>(null);
+      final vs = EventStream<int?>(null);
       expect(vs.valueOrNull, isNull);
 
       vs.add(45);
@@ -151,7 +151,7 @@ void main() {
     });
 
     test('isClosed set after close()', () {
-      final vs = EventValueStream(42);
+      final vs = EventStream(42);
       expect(vs.isClosed, isFalse);
 
       vs.close();
@@ -159,7 +159,7 @@ void main() {
     });
 
     test('listen() push updates', () async {
-      final vs = EventValueStream(0);
+      final vs = EventStream(0);
       expect(vs.valueOrNull, 0);
 
       final values = <int>[];
@@ -178,7 +178,7 @@ void main() {
     });
 
     test('add() arguments', () async {
-      final vs = EventValueStream<int?>(0);
+      final vs = EventStream<int?>(0);
       expect(vs.valueOrNull, 0);
 
       final values = <int?>[];
@@ -209,7 +209,7 @@ void main() {
     });
 
     test('updates error & value on addError() & add()', () {
-      final vs = EventValueStream(42);
+      final vs = EventStream(42);
       expect(vs.valueOrNull, 42);
 
       vs.addError(Error());
