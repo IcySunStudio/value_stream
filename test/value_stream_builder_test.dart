@@ -3,12 +3,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:value_stream/value_stream.dart';
 
 void main() {
-  group('ValueStreamBuilder', () {
+  group('DataValueStreamBuilder', () {
     testWidgets('Widget is rebuilt with new stream value when it is updated', (WidgetTester tester) async {
-      final vs = ValueStream(1);
+      final vs = DataValueStream(1);
 
       await tester.pumpWidget(MaterialApp(
-        home: ValueStreamBuilder<int>(
+        home: DataValueStreamBuilder<int>(
           stream: vs,
           builder: (context, value) => Text('$value'),
         ),
@@ -22,4 +22,6 @@ void main() {
       vs.close();
     });
   });
+
+  // TODO EventValueStreamBuilder
 }
