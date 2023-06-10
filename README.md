@@ -11,21 +11,23 @@ and the Flutter guide for
 [developing packages and plugins](https://flutter.dev/developing-packages). 
 -->
 
+Simple and easy to use set of basic streams with direct access to the latest emitted value.
+
+*Package in development: documentation, examples and more to come.*
+
 ## Features
+- No dependencies
+- Simple code
 
-Basic & easy to use set of basic streams with easy access to the latest emitted value
-
-TODO: Finish description
+TODO: Finish list what your package can do. Maybe include images, gifs, or videos.
 
 ## Getting started
 
-TODO: finish List prerequisites and provide or point to information on how to
-start using the package.
+TODO: finish List prerequisites and provide or point to information on how to start using the package.
 
 ## Usage
 
-TODO: finish Include short and useful examples for package users. Add longer examples
-to `/example` folder. 
+TODO: finish Include short and useful examples for package users. Add longer examples to `/example` folder.
 
 ```dart
 const like = 'sample';
@@ -33,6 +35,5 @@ const like = 'sample';
 
 ## Additional information
 
-TODO: finish Tell users more about the package: where to find more information, how to 
-contribute to the package, how to file issues, what response they can expect 
-from the package authors, and more.
+TODO: finish Tell users more about the package: where to find more information, how to contribute to the package, how to file issues, 
+what response they can expect from the package authors, and more.
