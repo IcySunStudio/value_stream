@@ -31,8 +31,9 @@ class DataValueStreamBuilder<T> extends StreamBuilderBase<T, T> {
   Widget build(BuildContext context, T currentSummary) => builder(context, currentSummary);
 }
 
+/// Widget that builds itself based on the latest value a [EventValueStream].
 class EventValueStreamBuilder<T> extends StreamBuilder<T> {
-  /// TODO doc
+  /// Widget that builds itself based on the latest value a [EventValueStream].
   EventValueStreamBuilder({
     super.key,
     required EventValueStream<T> stream,

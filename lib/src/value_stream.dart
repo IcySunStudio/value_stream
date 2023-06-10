@@ -1,5 +1,6 @@
 import 'dart:async';
 
+/// Abstract base class for a broadcast [Stream] with access to the latest emitted value.
 abstract class ValueStream<T> implements Sink<T> {
   ValueStream([T? initialValue]) {
     if (initialValue != null) {
@@ -25,24 +26,19 @@ abstract class ValueStream<T> implements Sink<T> {
     return true;
   }
 
-  /// TODO doc
+  /// Set value
   void _setValue(T data);
 
-  /// TODO doc
-  /// The value associated with the [updates] stream, commonly the latest one.
-  /// Be sure to check [loaded] before accessing the value; otherwise it may not
-  /// be initialized yet, and accessing it will raise an exception.
+  /// Latest emitted value, or null if no value is available.
   T? get valueOrNull;
 
-  /// TODO doc
-  /// Any changes to [value], in the form of a stream.
-  /// The current [value] itself typically is not sent upon [Stream.listen] to
-  /// [updates], although this detail is implementation defined.
+  /// Adds a subscription to this stream.
+  ///
+  /// Returns a [StreamSubscription] which handles events from this stream using the provided [onData] and [onDone] handlers.
+  /// The handlers can be changed on the subscription, but they start out as the provided functions.
   StreamSubscription<T> listen(void Function(T data)? onData, {void Function()? onDone});
 
-  /// Access to the inner stream.
-  /// This stream will never contains errors because ValueStream explicitly don't handle them.
-  /// TODO change so ValueStream extends Stream directly like BehaviorSubject, so it's easier to use ? But Stream has error handling by default, and one goal of ValueStream is to exclude Errors.
+  /// Internal stream.
   Stream<T> get innerStream => _controller.stream;
 
   /// Whether the stream is closed for adding more events.
@@ -54,7 +50,7 @@ abstract class ValueStream<T> implements Sink<T> {
 }
 
 /// A broadcast [Stream] with access to the latest emitted value.
-/// Does explicitly not handle errors to provide a direct and simple access to the value.
+/// Does explicitly NOT handle errors to provide a direct and simple access to the [value].
 class DataValueStream<T> extends ValueStream<T> {
   DataValueStream(T initialValue) : super(initialValue);
 
@@ -66,19 +62,14 @@ class DataValueStream<T> extends ValueStream<T> {
   @override
   T get valueOrNull => _latestValue;
 
+  /// Latest emitted value.
   T get value => _latestValue;
 
-  /// TODO doc
-  /// Any changes to [value], in the form of a stream.
-  /// The current [value] itself typically is not sent upon [Stream.listen] to
-  /// [updates], although this detail is implementation defined.
   @override
   StreamSubscription<T> listen(void Function(T data)? onData, {void Function()? onDone}) => _controller.stream.listen(onData, onDone: onDone);
 }
 
 /// A broadcast [Stream] with access to the latest emitted value, with error handling.
-/// TODO doc
-/// Optional initialValue
 class EventValueStream<T> extends ValueStream<T> {
   EventValueStream([super.initialValue]);
 
@@ -87,27 +78,27 @@ class EventValueStream<T> extends ValueStream<T> {
   @override
   void _setValue(T data) => _latestSnapshot = EventSnapshot.withData(data);
 
-  /// May be null if error
+  /// May be null if last emitted value is an error
   @override
   T? get valueOrNull => _latestSnapshot.value;
 
-  /// TODO doc
-  /// TODO also return stackTrace ?
+  /// Latest emitted error, or null if last emitted value is not an error.
   Object? get error => _latestSnapshot.error;
 
-  /// TODO doc
+  /// Whether last emitted value is an error.
+  /// In which case [error] is not null.
   bool get hasError => _latestSnapshot.hasError;
 
-  /// TODO doc
+  /// Sends or enqueues an error event.
   void addError(Object error, [StackTrace? stackTrace]) {
     _controller.addError(error, stackTrace);
     _latestSnapshot = EventSnapshot.withError(error, stackTrace);
   }
 
-  /// TODO doc
-  /// Any changes to [value], in the form of a stream.
-  /// The current [value] itself typically is not sent upon [Stream.listen] to
-  /// [updates], although this detail is implementation defined.
+  /// Adds a subscription to this stream.
+  ///
+  /// Returns a [StreamSubscription] which handles events from this stream using the provided [onData], [onError] and [onDone] handlers.
+  /// The handlers can be changed on the subscription, but they start out as the provided functions.
   @override
   StreamSubscription<T> listen(void Function(T data)? onData, {Function? onError, void Function()? onDone}) => _controller.stream.listen(onData, onError: onError, onDone: onDone);
 }
