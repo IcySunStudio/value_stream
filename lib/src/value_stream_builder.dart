@@ -36,7 +36,7 @@ class EventStreamBuilder<T> extends StreamBuilder<T> {
   /// Widget that builds itself based on the latest value a [EventStream].
   EventStreamBuilder({
     super.key,
-    required EventStream<T> stream,
+    EventStream<T>? stream,
     required super.builder,
-  }) : super(initialData: stream.valueOrNull, stream: stream.innerStream);
+  }) : super(initialData: stream?.valueOrNull, stream: stream?.innerStream);
 }
