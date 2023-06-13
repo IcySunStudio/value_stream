@@ -78,7 +78,7 @@ class EventStream<T> extends ValueStream<T> {
   @override
   void _setValue(T data) => _latestSnapshot = EventSnapshot.withData(data);
 
-  /// May be null if last emitted value is an error
+  /// May be null if no value has been emitted yet, or if last emitted value is an error
   @override
   T? get valueOrNull => _latestSnapshot.value;
 
