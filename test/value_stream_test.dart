@@ -104,6 +104,14 @@ void main() {
       ss.cancel();
       vs.close();
     });
+
+    test('first getter', () async {
+      final vs = DataStream(42);
+      final first = await vs.first;
+      expect(first, 42);
+
+      vs.close();
+    });
   });
 
   group('EventStream', () {
@@ -219,6 +227,17 @@ void main() {
       vs.add(100);
       expect(vs.valueOrNull, 100);
       expect(vs.error, isNull);
+
+      vs.close();
+    });
+
+    test('first getter', () async {
+      final vs = EventStream();
+      expect(vs.valueOrNull, isNull);
+      final firstFuture = vs.first;
+      vs.add(42);
+      final first = await firstFuture;
+      expect(first, 42);
 
       vs.close();
     });

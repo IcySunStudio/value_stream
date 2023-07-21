@@ -1,10 +1,13 @@
 import 'dart:async';
 
+/// Whether the specified type is nullable.
+bool isNullable<T>() => null is T;
+
 /// Abstract base class for a broadcast [Stream] with access to the latest emitted value.
 abstract class ValueStream<T> implements Sink<T> {
   ValueStream([T? initialValue]) {
-    if (initialValue != null) {
-      _setValue(initialValue);
+    if (initialValue != null || isNullable<T>()) {
+      _setValue(initialValue as T);
     }
   }
 
@@ -40,6 +43,10 @@ abstract class ValueStream<T> implements Sink<T> {
 
   /// Internal stream.
   Stream<T> get innerStream => _controller.stream;
+
+  /// The first element of this stream.
+  /// Returns last emitted value if available, or waits for the first element to come.
+  Future<T> get first => valueOrNull != null ? Future.value(valueOrNull) : innerStream.first;
 
   /// Whether the stream is closed for adding more events.
   bool get isClosed => _controller.isClosed;

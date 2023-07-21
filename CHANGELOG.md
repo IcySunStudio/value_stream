@@ -1,3 +1,6 @@
+## 0.0.4
+* Add ValueStream.first getter
+
 ## 0.0.3
 * Allow null stream on EventStreamBuilder
 
