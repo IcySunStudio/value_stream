@@ -80,6 +80,16 @@ class DataStream<T> extends ValueStream<T> {
 class EventStream<T> extends ValueStream<T> {
   EventStream([super.initialValue]);
 
+  /// Creates a [EventStream] from a [Stream].
+  /// Data emitted by [stream] will also be emitted by this [EventStream].
+  /// Values can also be emitted 'manually' to this [EventStream] using regular methods.
+  /// This [EventStream] will NOT be closed if [stream] is done: only the internal subscription will be cancelled when this [EventStream] is closed.
+  EventStream.fromStream(Stream<T> stream, [super.initialValue]) {
+    _fromStreamSubscription = stream.listen(add, onError: addError);
+  }
+
+  StreamSubscription<T>? _fromStreamSubscription;
+
   EventSnapshot<T> _latestSnapshot = const EventSnapshot.nothing();
 
   @override
@@ -108,6 +118,13 @@ class EventStream<T> extends ValueStream<T> {
   /// The handlers can be changed on the subscription, but they start out as the provided functions.
   @override
   StreamSubscription<T> listen(void Function(T data)? onData, {Function? onError, void Function()? onDone}) => _controller.stream.listen(onData, onError: onError, onDone: onDone);
+
+  @override
+  Future<void> close() {
+    _fromStreamSubscription?.cancel();
+    _fromStreamSubscription = null;
+    return super.close();
+  }
 }
 
 class EventSnapshot<T> {

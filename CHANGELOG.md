@@ -1,3 +1,6 @@
+## 0.0.5
+* Add EventStream.fromStream constructor
+
 ## 0.0.4
 * Add ValueStream.first getter
 

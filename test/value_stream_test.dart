@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:value_stream/value_stream.dart';
@@ -239,7 +241,37 @@ void main() {
       final first = await firstFuture;
       expect(first, 42);
 
+      es.add(50);
+      expect(es.valueOrNull, 50);
+
       es.close();
+    });
+
+    test('fromStream', () async {
+      final sc = StreamController<int>();
+      final s = sc.stream;
+      sc.add(0);
+
+      final es = EventStream.fromStream(s);
+      expect(es.valueOrNull, isNull);
+
+      sc.add(1);
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(es.valueOrNull, 1);
+
+      es.add(2);
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(es.valueOrNull, 2);
+
+      sc.addError(Error());
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(es.valueOrNull, isNull);
+      expect(es.error, isA<Error>());
+
+      es.close();
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(es.isClosed, isTrue);
+      expect(sc.isClosed, isFalse);
     });
   });
 }
