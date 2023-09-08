@@ -38,5 +38,25 @@ class EventStreamBuilder<T> extends StreamBuilder<T> {
     super.key,
     EventStream<T>? stream,
     required super.builder,
-  }) : super(initialData: stream?.valueOrNull, stream: stream?.innerStream);
+  }) : initialError = stream?.error, super(initialData: stream?.valueOrNull, stream: stream?.innerStream);
+
+  /// Same as default [EventStreamBuilder] constructor, but with a [Stream] instead of a [EventStream].
+  const EventStreamBuilder.fromStream({
+    super.key,
+    super.stream,
+    super.initialData,
+    this.initialError,
+    required super.builder,
+  });
+
+  /// The error that will be used to create the initial snapshot.
+  final Object? initialError;
+
+  @override
+  AsyncSnapshot<T> initial() {
+    if (initialError != null) return AsyncSnapshot<T>.withError(ConnectionState.none, initialError!);
+    return initialData == null
+      ? AsyncSnapshot<T>.nothing()
+      : AsyncSnapshot<T>.withData(ConnectionState.none, initialData as T);
+  }
 }

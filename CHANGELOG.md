@@ -1,3 +1,7 @@
+## 0.1.0
+* EventStreamBuilder now handle initialError
+* Add EventStreamBuilder.fromStream constructor
+
 ## 0.0.5
 * Add EventStream.fromStream constructor
 
