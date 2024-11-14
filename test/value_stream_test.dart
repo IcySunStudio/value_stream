@@ -114,6 +114,32 @@ void main() {
 
       vs.close();
     });
+
+    test('fromStream', () async {
+      final sc = StreamController<int>();
+      final s = sc.stream;
+      sc.add(0);
+
+      final ds = DataStream.fromStream(s, 42);
+      expect(ds.value, 42);
+
+      sc.add(1);
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(ds.value, 1);
+
+      ds.add(2);
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(ds.value, 2);
+
+      sc.addError(Error());
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(ds.value, 2);
+
+      ds.close();
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(ds.isClosed, isTrue);
+      expect(sc.isClosed, isFalse);
+    });
   });
 
   group('EventStream', () {

@@ -46,6 +46,7 @@ abstract class ValueStream<T> implements Sink<T> {
 
   /// The first element of this stream.
   /// Returns last emitted value if available, or waits for the first element to come.
+  /// May throw, if first value is an error.
   Future<T> get first => valueOrNull != null ? Future.value(valueOrNull) : innerStream.first;
 
   /// Whether the stream is closed for adding more events.
@@ -61,6 +62,17 @@ abstract class ValueStream<T> implements Sink<T> {
 class DataStream<T> extends ValueStream<T> {
   DataStream(T initialValue) : super(initialValue);
 
+  /// Creates a [DataStream] from a [Stream].
+  /// Data emitted by [stream] will also be emitted by this [EventStream].
+  /// Values can also be emitted 'manually' to this [DataStream] using regular methods.
+  /// This [DataStream] will NOT be closed if [stream] is done: only the internal subscription will be cancelled when this [DataStream] is closed.
+  /// If [onError] is provided, it will be called when an error is emitted by [stream]. Otherwise error events will be ignored.
+  DataStream.fromStream(Stream<T> stream, super.initialValue, {Function? onError}) {
+    _fromStreamSubscription = stream.listen(add, onError: onError ?? (e) {});
+  }
+
+  StreamSubscription<T>? _fromStreamSubscription;
+
   late T _latestValue;
 
   @override
@@ -74,6 +86,13 @@ class DataStream<T> extends ValueStream<T> {
 
   @override
   StreamSubscription<T> listen(void Function(T data)? onData, {void Function()? onDone}) => _controller.stream.listen(onData, onDone: onDone);
+
+  @override
+  Future<void> close() {
+    _fromStreamSubscription?.cancel();
+    _fromStreamSubscription = null;
+    return super.close();
+  }
 }
 
 /// A broadcast [Stream] with access to the latest emitted value, with error handling.
