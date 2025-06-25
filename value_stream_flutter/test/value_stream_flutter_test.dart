@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:value_stream/value_stream.dart';
 import 'package:value_stream_flutter/value_stream_flutter.dart';
 
 void main() {

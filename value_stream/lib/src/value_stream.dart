@@ -60,7 +60,7 @@ abstract class ValueStream<T> implements Sink<T> {
 /// A broadcast [Stream] with access to the latest emitted value.
 /// Does explicitly NOT handle errors to provide a direct and simple access to the [value].
 class DataStream<T> extends ValueStream<T> {
-  DataStream(T initialValue) : super(initialValue);
+  DataStream(T super.initialValue);
 
   /// Creates a [DataStream] from a [Stream].
   /// Data emitted by [stream] will also be emitted by this [EventStream].
