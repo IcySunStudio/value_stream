@@ -1,0 +1,18 @@
+name: value_stream_flutter
+description: Flutter widgets for value_stream.
+version: 1.0.0
+repository: https://github.com/IcySunStudio/value_stream
+issue_tracker: https://github.com/IcySunStudio/value_stream/issues
+
+environment:
+  sdk: ">=2.17.0 <4.0.0"
+  flutter: ">=1.17.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.1
