@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter_test/flutter_test.dart';
+import 'package:test/test.dart';
 
 import 'package:value_stream/value_stream.dart';
 

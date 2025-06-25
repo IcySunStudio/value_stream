@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-
-import 'value_stream.dart';
+import 'package:value_stream/value_stream.dart';
 
 /// Signature for strategies that build widgets based on provided data
 typedef DataWidgetBuilder<T> = Widget Function(BuildContext context, T value);
