@@ -11,8 +11,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  value_stream: #^1.0.0
-    path: ../value_stream
+  value_stream: ^1.0.0
 
 dev_dependencies:
   flutter_test:
