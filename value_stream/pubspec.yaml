@@ -1,0 +1,12 @@
+name: value_stream
+description: Dart package that provides a set of basic streams with easy access to the latest emitted value
+version: 1.0.0
+repository: https://github.com/IcySunStudio/value_stream
+issue_tracker: https://github.com/IcySunStudio/value_stream/issues
+
+environment:
+  sdk: ^3.0.0
+
+dev_dependencies:
+  test: ^1.26.2
+  flutter_lints: ^6.0.0

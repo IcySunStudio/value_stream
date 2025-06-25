@@ -1,3 +1,6 @@
+## 1.0.0
+* BREAKING: split package in 2, to remove flutter dependency. Widgets of this package are now in the `value_stream_flutter` package.
+
 ## 0.2.0
 * Add DataStream.fromStream constructor
 
