@@ -1,3 +1,6 @@
+## 1.1.0
+* New `next` getter to await the next event in the stream.
+
 ## 1.0.0
 * BREAKING: split package in 2, to remove flutter dependency. Widgets of this package are now in the `value_stream_flutter` package.
 

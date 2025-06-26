@@ -49,6 +49,25 @@ abstract class ValueStream<T> implements Sink<T> {
   /// May throw, if first value is an error.
   Future<T> get first => valueOrNull != null ? Future.value(valueOrNull) : innerStream.first;
 
+  /// Waits for the next element emitted by this stream, and returns it.
+  /// If the stream emits an error, it will be propagated to the returned future.
+  /// If the stream is closed before any data is emitted, it will throw a [StateError].
+  Future<T> get next {
+    final completer = Completer<T>();
+    StreamSubscription? subscription;
+    subscription = innerStream.listen((data) {
+      completer.complete(data);
+      subscription?.cancel();
+    }, onError: (e, s) {
+      completer.completeError(e, s);
+      subscription?.cancel();
+    }, onDone: () {
+      completer.completeError(StateError('Stream closed before any data was emitted'));
+      subscription?.cancel();
+    });
+    return completer.future;
+  }
+
   /// Whether the stream is closed for adding more events.
   bool get isClosed => _controller.isClosed;
 

@@ -115,6 +115,21 @@ void main() {
       vs.close();
     });
 
+    test('next getter', () async {
+      final vs = DataStream(42);
+      var nextFuture = vs.next;
+      vs.add(50);
+      var next = await nextFuture;
+      expect(next, 50);
+
+      nextFuture = vs.next;
+      vs.add(51);
+      next = await nextFuture;
+      expect(next, 51);
+
+      vs.close();
+    });
+
     test('fromStream', () async {
       final sc = StreamController<int>();
       final s = sc.stream;
@@ -269,6 +284,26 @@ void main() {
 
       es.add(50);
       expect(es.valueOrNull, 50);
+
+      es.close();
+    });
+
+    test('next getter', () async {
+      final es = EventStream();
+      expect(es.valueOrNull, isNull);
+      var nextFuture = es.next;
+      es.add(42);
+      var next = await nextFuture;
+      expect(next, 42);
+
+      nextFuture = es.next;
+      es.add(50);
+      next = await nextFuture;
+      expect(next, 50);
+
+      nextFuture = es.next;
+      es.addError(Error());
+      expect(() => nextFuture, throwsA(isA<Error>()));
 
       es.close();
     });
