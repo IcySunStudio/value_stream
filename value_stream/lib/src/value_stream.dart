@@ -35,6 +35,10 @@ abstract class ValueStream<T> implements Sink<T> {
   /// Latest emitted value, or null if no value is available.
   T? get valueOrNull;
 
+  /// Whether a value is currently available.
+  /// Distinguishes "no value yet" from "current value is null".
+  bool get hasValue;
+
   /// Adds a subscription to this stream.
   ///
   /// Returns a [StreamSubscription] which handles events from this stream using the provided [onData] and [onDone] handlers.
@@ -47,7 +51,7 @@ abstract class ValueStream<T> implements Sink<T> {
   /// The first element of this stream.
   /// Returns last emitted value if available, or waits for the first element to come.
   /// May throw, if first value is an error.
-  Future<T> get first => valueOrNull != null ? Future.value(valueOrNull) : innerStream.first;
+  Future<T> get first => hasValue ? Future.value(valueOrNull) : innerStream.first;
 
   /// Waits for the next element emitted by this stream, and returns it.
   /// If the stream emits an error, it will be propagated to the returned future.
@@ -100,6 +104,12 @@ class DataStream<T> extends ValueStream<T> {
   @override
   T get valueOrNull => _latestValue;
 
+  @override
+  bool get hasValue => true;
+
+  @override
+  Future<T> get first => Future.value(_latestValue);
+
   /// Latest emitted value.
   T get value => _latestValue;
 
@@ -136,6 +146,9 @@ class EventStream<T> extends ValueStream<T> {
   /// May be null if no value has been emitted yet, or if last emitted value is an error
   @override
   T? get valueOrNull => _latestSnapshot.value;
+
+  @override
+  bool get hasValue => _latestSnapshot.hasValue;
 
   /// Latest emitted error, or null if last emitted value is not an error.
   Object? get error => _latestSnapshot.error;

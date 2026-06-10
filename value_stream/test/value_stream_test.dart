@@ -115,6 +115,27 @@ void main() {
       vs.close();
     });
 
+    test('first getter returns null immediately for DataStream<int?> with null value', () async {
+      final vs = DataStream<int?>(null);
+      expect(vs.value, isNull);
+
+      // Must resolve immediately without waiting for the next emission
+      final first = await vs.first.timeout(const Duration(milliseconds: 100));
+      expect(first, isNull);
+
+      vs.close();
+    });
+
+    test('first getter returns null immediately for DataStream<int?> after emitting null', () async {
+      final vs = DataStream<int?>(42);
+      vs.add(null);
+
+      final first = await vs.first.timeout(const Duration(milliseconds: 100));
+      expect(first, isNull);
+
+      vs.close();
+    });
+
     test('next getter', () async {
       final vs = DataStream(42);
       var nextFuture = vs.next;
@@ -274,8 +295,8 @@ void main() {
       es.close();
     });
 
-    test('first getter', () async {
-      final es = EventStream();
+    test('first getter waits for first emission when no initial value', () async {
+      final es = EventStream<int>();
       expect(es.valueOrNull, isNull);
       final firstFuture = es.first;
       es.add(42);
@@ -284,6 +305,26 @@ void main() {
 
       es.add(50);
       expect(es.valueOrNull, 50);
+
+      es.close();
+    });
+
+    test('first getter returns null immediately for EventStream<int?> with null initial value', () async {
+      final es = EventStream<int?>(null);
+      expect(es.valueOrNull, isNull);
+
+      final first = await es.first.timeout(const Duration(milliseconds: 100));
+      expect(first, isNull);
+
+      es.close();
+    });
+
+    test('first getter returns null immediately for EventStream<int?> after emitting null', () async {
+      final es = EventStream<int?>(42);
+      es.add(null);
+
+      final first = await es.first.timeout(const Duration(milliseconds: 100));
+      expect(first, isNull);
 
       es.close();
     });
