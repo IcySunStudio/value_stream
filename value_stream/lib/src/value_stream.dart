@@ -24,8 +24,8 @@ abstract class ValueStream<T> implements Sink<T> {
     if (skipSame && data == valueOrNull) return false;
     if (skipNull && data == null) return false;
 
-    _controller.add(data);
     _setValue(data);
+    _controller.add(data);
     return true;
   }
 
