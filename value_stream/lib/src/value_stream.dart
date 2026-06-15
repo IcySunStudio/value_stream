@@ -60,14 +60,14 @@ abstract class ValueStream<T> implements Sink<T> {
     final completer = Completer<T>();
     StreamSubscription? subscription;
     subscription = innerStream.listen((data) {
+      subscription?.cancel();
       completer.complete(data);
-      subscription?.cancel();
     }, onError: (e, s) {
+      subscription?.cancel();
       completer.completeError(e, s);
-      subscription?.cancel();
     }, onDone: () {
-      completer.completeError(StateError('Stream closed before any data was emitted'));
       subscription?.cancel();
+      completer.completeError(StateError('Stream closed before any data was emitted'));
     });
     return completer.future;
   }
