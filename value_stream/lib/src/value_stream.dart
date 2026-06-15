@@ -86,7 +86,7 @@ class DataStream<T> extends ValueStream<T> {
   DataStream(T super.initialValue);
 
   /// Creates a [DataStream] from a [Stream].
-  /// Data emitted by [stream] will also be emitted by this [EventStream].
+  /// Data emitted by [stream] will also be emitted by this [DataStream].
   /// Values can also be emitted 'manually' to this [DataStream] using regular methods.
   /// This [DataStream] will NOT be closed if [stream] is done: only the internal subscription will be cancelled when this [DataStream] is closed.
   /// If [onError] is provided, it will be called when an error is emitted by [stream]. Otherwise error events will be ignored.
@@ -182,7 +182,7 @@ class EventSnapshot<T> {
   const EventSnapshot._(this.value, this.hasValue, this.error, this.stackTrace);
   const EventSnapshot.nothing(): this._(null, false, null, null);
   const EventSnapshot.withData(T data): this._(data, true, null, null);
-  const EventSnapshot.withError(Object error, [StackTrace? stackTrace = StackTrace.empty]): this._(null, false, error, stackTrace);
+  const EventSnapshot.withError(Object error, [StackTrace? stackTrace]): this._(null, false, error, stackTrace);
 
   final T? value;
   final bool hasValue;
