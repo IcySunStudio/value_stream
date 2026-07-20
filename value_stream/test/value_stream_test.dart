@@ -177,42 +177,6 @@ void main() {
       expect(sc.isClosed, isFalse);
     });
 
-    test('where() returns DataStreamView of nullable type', () async {
-      final vs = DataStream<int>(10);
-      final filtered = vs.where((v) => v > 5);
-
-      expect(filtered, isA<DataStreamView<int?>>());
-      expect(filtered.value, 10); // passes predicate
-
-      final values = <int?>[];
-      final ss = filtered.listen(values.add);
-
-      vs.add(8);  // passes
-      vs.add(3);  // fails → null
-      vs.add(7);  // passes
-
-      await Future.delayed(const Duration(milliseconds: 1));
-      expect(values, [8, null, 7]);
-
-      ss.cancel();
-      vs.close();
-    });
-
-    test('where() initial value fails predicate → null', () {
-      final vs = DataStream<int>(2);
-      final filtered = vs.where((v) => v > 5);
-      expect(filtered.value, isNull);
-      vs.close();
-    });
-
-    test('where() close propagates to result', () async {
-      final vs = DataStream<int>(10);
-      final filtered = vs.where((v) => v > 5);
-      vs.close();
-      await Future.delayed(const Duration(milliseconds: 1));
-      expect(filtered.isClosed, isTrue);
-    });
-
     test('asView returns DataStreamView, hides write interface', () {
       final vs = DataStream<int>(42);
       final DataStreamView<int> view = vs.asView; // static type is DataStreamView
@@ -539,42 +503,6 @@ void main() {
       await Future.delayed(const Duration(milliseconds: 1));
       expect(es.isClosed, isTrue);
       expect(sc.isClosed, isFalse);
-    });
-
-    test('where() returns EventStreamView of nullable type', () async {
-      final es = EventStream<int>(10);
-      final filtered = es.where((v) => v > 5);
-
-      expect(filtered, isA<EventStreamView<int?>>());
-      expect(filtered.valueOrNull, 10); // passes predicate
-
-      final values = <int?>[];
-      final ss = filtered.listen(values.add);
-
-      es.add(8);  // passes
-      es.add(3);  // fails → null
-      es.add(7);  // passes
-
-      await Future.delayed(const Duration(milliseconds: 1));
-      expect(values, [8, null, 7]);
-
-      ss.cancel();
-      es.close();
-    });
-
-    test('where() initial value fails predicate → null', () {
-      final es = EventStream<int>(2);
-      final filtered = es.where((v) => v > 5);
-      expect(filtered.valueOrNull, isNull);
-      es.close();
-    });
-
-    test('where() with no initial value', () {
-      final es = EventStream<int>();
-      final filtered = es.where((v) => v > 5);
-      expect(filtered.valueOrNull, isNull);
-      expect(filtered.hasValue, isFalse);
-      es.close();
     });
 
     test('map() returns EventStreamView with converted value', () async {

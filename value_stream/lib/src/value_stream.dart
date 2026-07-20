@@ -147,17 +147,6 @@ class DataStream<T> extends DataStreamView<T> {
     return true;
   }
 
-  /// Returns a new [DataStreamView] of type [T?].
-  /// Values that satisfy [test] are forwarded as-is; values that do not are replaced with null.
-  DataStreamView<T?> where(bool Function(T value) test) {
-    final result = DataStream<T?>(test(_value) ? _value : null);
-    _controller.stream.listen(
-      (data) => result.add(test(data) ? data : null),
-      onDone: result.close,
-    );
-    return result;
-  }
-
   /// Returns this stream as its read-only [DataStreamView] interface.
   /// Useful for exposing a read-only view to external consumers.
   DataStreamView<T> get asView => this;
@@ -302,19 +291,6 @@ class EventStream<T> extends EventStreamView<T> {
   void addError(Object error, [StackTrace? stackTrace]) {
     _snapshot = EventSnapshot.withError(error, stackTrace);
     _controller.addError(error, stackTrace);
-  }
-
-  /// Returns a new [EventStreamView] of type [T?].
-  /// Values that satisfy [test] are forwarded as-is; values that do not are replaced with null.
-  EventStreamView<T?> where(bool Function(T value) test) {
-    final current = valueOrNull;
-    final result = EventStream<T?>(current != null && test(current) ? current : null);
-    _controller.stream.listen(
-      (data) => result.add(test(data) ? data : null),
-      onError: result.addError,
-      onDone: result.close,
-    );
-    return result;
   }
 
   /// Returns this stream as its read-only [EventStreamView] interface.
