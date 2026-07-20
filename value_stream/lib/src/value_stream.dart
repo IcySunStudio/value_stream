@@ -3,186 +3,327 @@ import 'dart:async';
 /// Whether the specified type is nullable.
 bool isNullable<T>() => null is T;
 
-/// Abstract base class for a broadcast [Stream] with access to the latest emitted value.
-abstract class ValueStream<T> implements Sink<T> {
-  ValueStream([T? initialValue]) {
-    if (initialValue != null || isNullable<T>()) {
-      _setValue(initialValue as T);
-    }
-  }
+/// Abstract read-only base for a broadcast [Stream] with access to the latest emitted value.
+abstract class ValueStreamView<T> {
+  /// The broadcast stream of values.
+  Stream<T> get stream;
 
-  final _controller = StreamController<T>.broadcast();
-
-  /// Push [data] to the stream.
-  /// Ignored if [skipIfClosed] is true and the stream is closed.
-  /// Ignored if [skipSame] is true and [data] == [value].
-  /// Ignored if [skipNull] is true and [data] is null.
-  /// Return true if [value] was added.
-  @override
-  bool add(T data, {bool skipIfClosed = false, bool skipSame = false, bool skipNull = false}) {
-    if (skipIfClosed && _controller.isClosed) return false;
-    if (skipSame && data == valueOrNull) return false;
-    if (skipNull && data == null) return false;
-
-    _controller.add(data);
-    _setValue(data);
-    return true;
-  }
-
-  /// Set value
-  void _setValue(T data);
-
-  /// Latest emitted value, or null if no value is available.
+  /// Latest emitted value, or null if no value is available yet.
   T? get valueOrNull;
-
-  /// Whether a value is currently available.
-  /// Distinguishes "no value yet" from "current value is null".
-  bool get hasValue;
 
   /// Adds a subscription to this stream.
   ///
-  /// Returns a [StreamSubscription] which handles events from this stream using the provided [onData] and [onDone] handlers.
-  /// The handlers can be changed on the subscription, but they start out as the provided functions.
-  StreamSubscription<T> listen(void Function(T data)? onData, {void Function()? onDone});
-
-  /// Internal stream.
-  Stream<T> get innerStream => _controller.stream;
+  /// Returns a [StreamSubscription] which handles events from this stream using
+  /// the provided [onData], [onError] and [onDone] handlers.
+  StreamSubscription<T> listen(
+    void Function(T data)? onData, {
+    Function? onError,
+    void Function()? onDone,
+  }) => stream.listen(onData, onError: onError, onDone: onDone);
 
   /// The first element of this stream.
-  /// Returns last emitted value if available, or waits for the first element to come.
-  /// May throw, if first value is an error.
-  Future<T> get first => hasValue ? Future.value(valueOrNull) : innerStream.first;
+  /// Returns the last emitted value if available, or waits for the first element.
+  /// May throw if the first value is an error.
+  Future<T> get first;
+
+  /// Returns a new [ValueStreamView] that applies [convert] to each value.
+  ValueStreamView<R> map<R>(R Function(T value) convert);
 
   /// Waits for the next element emitted by this stream, and returns it.
   /// If the stream emits an error, it will be propagated to the returned future.
   /// If the stream is closed before any data is emitted, it will throw a [StateError].
   Future<T> get next {
     final completer = Completer<T>();
-    StreamSubscription? subscription;
-    subscription = innerStream.listen((data) {
-      completer.complete(data);
-      subscription?.cancel();
-    }, onError: (e, s) {
-      completer.completeError(e, s);
-      subscription?.cancel();
-    }, onDone: () {
-      completer.completeError(StateError('Stream closed before any data was emitted'));
-      subscription?.cancel();
-    });
+    StreamSubscription<T>? subscription;
+    subscription = stream.listen(
+      (data) { completer.complete(data); subscription?.cancel(); },
+      onError: (e, s) { completer.completeError(e, s); subscription?.cancel(); },
+      onDone: () {
+        completer.completeError(StateError('Stream closed before any data was emitted'));
+        subscription?.cancel();
+      },
+    );
     return completer.future;
   }
-
-  /// Whether the stream is closed for adding more events.
-  bool get isClosed => _controller.isClosed;
-
-  /// Close the stream. After that, calls to [add] are no longer allowed.
-  @override
-  Future<void> close() => _controller.close();
 }
 
-/// A broadcast [Stream] with access to the latest emitted value.
-/// Does explicitly NOT handle errors to provide a direct and simple access to the [value].
-class DataStream<T> extends ValueStream<T> {
-  DataStream(T super.initialValue);
+/// A read-only broadcast [Stream] view with guaranteed access to the latest value.
+/// Does NOT handle errors — use [EventStreamView] if error handling is needed.
+///
+/// Instances of this class are returned by [DataStream.map] and [DataStreamView.map].
+/// They use a lazy subscription to the source stream and automatically close when
+/// the source closes — no explicit disposal is required.
+class DataStreamView<T> extends ValueStreamView<T> {
+  DataStreamView._(T value, StreamController<T> controller)
+      : _value = value,
+        _controller = controller;
 
-  /// Creates a [DataStream] from a [Stream].
-  /// Data emitted by [stream] will also be emitted by this [EventStream].
-  /// Values can also be emitted 'manually' to this [DataStream] using regular methods.
-  /// This [DataStream] will NOT be closed if [stream] is done: only the internal subscription will be cancelled when this [DataStream] is closed.
-  /// If [onError] is provided, it will be called when an error is emitted by [stream]. Otherwise error events will be ignored.
-  DataStream.fromStream(Stream<T> stream, super.initialValue, {Function? onError}) {
+  T _value;
+  final StreamController<T> _controller;
+
+  /// Latest emitted value. Always available.
+  T get value => _value;
+
+  @override
+  T get valueOrNull => _value;
+
+  @override
+  Stream<T> get stream => _controller.stream;
+
+  /// Whether the stream is closed.
+  bool get isClosed => _controller.isClosed;
+
+  /// Always returns the current [value] immediately, since [DataStreamView] always has a value.
+  @override
+  Future<T> get first => Future.value(_value);
+
+  /// Returns a new read-only [DataStreamView] that applies [convert] to each value.
+  ///
+  /// The returned view uses a **lazy subscription**: it only subscribes to this
+  /// stream when the first listener attaches, and unsubscribes when the last
+  /// listener leaves. It automatically closes when this stream closes.
+  ///
+  /// **Note on [value] staleness:** [value] is snapshotted at construction time
+  /// and again each time a listener attaches. If the source advances while the
+  /// returned view has no listeners, reading [value] before the first [listen]
+  /// call will return a stale (construction-time) value. [value] is guaranteed
+  /// up-to-date only after [listen] has been called at least once.
+  @override
+  DataStreamView<R> map<R>(R Function(T value) convert) {
+    StreamSubscription<T>? subscription;
+    late final DataStreamView<R> result;
+    late final StreamController<R> newController;
+
+    newController = StreamController<R>.broadcast(
+      onListen: () {
+        // Eagerly re-snapshot the source value so that result.value is never
+        // stale if the source advanced while this mapped view had no listeners.
+        result._value = convert(_value);
+        subscription = _controller.stream.listen(
+          (data) {
+            final mapped = convert(data);
+            result._value = mapped;
+            newController.add(mapped);
+          },
+          onDone: newController.close,
+        );
+      },
+      onCancel: () {
+        subscription?.cancel();
+        subscription = null;
+      },
+    );
+
+    result = DataStreamView._(convert(_value), newController);
+    return result;
+  }
+}
+
+/// A broadcast [Stream] with guaranteed access to the latest emitted value.
+/// Does NOT handle errors — use [EventStream] if error handling is needed.
+class DataStream<T> extends DataStreamView<T> {
+  DataStream(T initialValue)
+      : super._(initialValue, StreamController<T>.broadcast());
+
+  /// Creates a [DataStream] that forwards values from [stream].
+  /// Values can also be emitted manually via [add].
+  /// This [DataStream] will NOT be closed when [stream] is done; only the
+  /// internal subscription is cancelled when this [DataStream] is closed.
+  /// If [onError] is provided, it is called on errors from [stream];
+  /// otherwise errors are ignored.
+  DataStream.fromStream(Stream<T> stream, T initialValue, {Function? onError})
+      : super._(initialValue, StreamController<T>.broadcast()) {
     _fromStreamSubscription = stream.listen(add, onError: onError ?? (e) {});
   }
 
   StreamSubscription<T>? _fromStreamSubscription;
 
-  late T _latestValue;
+  /// Push [data] to the stream.
+  /// Ignored (returns false) if [skipIfClosed] is true and the stream is closed.
+  /// Ignored (returns false) if [skipSame] is true and [data] == [value].
+  /// Ignored (returns false) if [skipNull] is true and [data] is null.
+  /// Returns true if [data] was emitted.
+  bool add(T data, {bool skipIfClosed = false, bool skipSame = false, bool skipNull = false}) {
+    if (skipIfClosed && _controller.isClosed) return false;
+    if (skipSame && data == _value) return false;
+    if (skipNull && data == null) return false;
 
-  @override
-  void _setValue(T data) => _latestValue = data;
+    _value = data;
+    _controller.add(data);
+    return true;
+  }
 
-  @override
-  T get valueOrNull => _latestValue;
+  /// Returns this stream as its read-only [DataStreamView] interface.
+  /// Useful for exposing a read-only view to external consumers.
+  DataStreamView<T> get asView => this;
 
-  @override
-  bool get hasValue => true;
-
-  @override
-  Future<T> get first => Future.value(_latestValue);
-
-  /// Latest emitted value.
-  T get value => _latestValue;
-
-  @override
-  StreamSubscription<T> listen(void Function(T data)? onData, {void Function()? onDone}) => _controller.stream.listen(onData, onDone: onDone);
-
-  @override
+  /// Close the stream. After that, calls to [add] are no longer allowed.
   Future<void> close() {
     _fromStreamSubscription?.cancel();
     _fromStreamSubscription = null;
-    return super.close();
+    return _controller.close();
   }
 }
 
-/// A broadcast [Stream] with access to the latest emitted value, with error handling.
-class EventStream<T> extends ValueStream<T> {
-  EventStream([super.initialValue]);
+/// A read-only broadcast [Stream] view with access to the latest emitted value
+/// or error.
+///
+/// Instances of this class are returned by [EventStream.map] and [EventStreamView.map].
+/// They use a lazy subscription to the source stream and automatically close when
+/// the source closes — no explicit disposal is required.
+class EventStreamView<T> extends ValueStreamView<T> {
+  EventStreamView._(EventSnapshot<T> snapshot, StreamController<T> controller)
+      : _snapshot = snapshot,
+        _controller = controller;
 
-  /// Creates a [EventStream] from a [Stream].
-  /// Data emitted by [stream] will also be emitted by this [EventStream].
-  /// Values can also be emitted 'manually' to this [EventStream] using regular methods.
-  /// This [EventStream] will NOT be closed if [stream] is done: only the internal subscription will be cancelled when this [EventStream] is closed.
-  EventStream.fromStream(Stream<T> stream, [super.initialValue]) {
+  EventSnapshot<T> _snapshot;
+  final StreamController<T> _controller;
+
+  /// Latest emitted value, or null if no value has been emitted yet or if the
+  /// last event was an error.
+  @override
+  T? get valueOrNull => _snapshot.value;
+
+  /// Whether a data value (not an error) has been emitted.
+  /// Distinguishes "no value yet" from "current value is null".
+  bool get hasValue => _snapshot.hasValue;
+
+  /// Latest emitted error, or null if the last event was not an error.
+  Object? get error => _snapshot.error;
+
+  /// Whether the last emitted event was an error.
+  bool get hasError => _snapshot.hasError;
+
+  @override
+  Stream<T> get stream => _controller.stream;
+
+  /// Whether the stream is closed.
+  bool get isClosed => _controller.isClosed;
+
+  @override
+  Future<T> get first => _snapshot.hasValue ? Future.value(_snapshot.value as T) : stream.first;
+
+  /// Returns a new read-only [EventStreamView] that applies [convert] to each
+  /// data value. Errors are forwarded as-is.
+  ///
+  /// The returned view uses a **lazy subscription**: it only subscribes to this
+  /// stream when the first listener attaches, and unsubscribes when the last
+  /// listener leaves. It automatically closes when this stream closes.
+  ///
+  /// **Note on [valueOrNull] staleness:** the snapshot is taken at construction
+  /// time and again each time a listener attaches. If the source advances while
+  /// the returned view has no listeners, reading [valueOrNull] (or [error])
+  /// before the first [listen] call will return a stale (construction-time)
+  /// snapshot. The snapshot is guaranteed up-to-date only after [listen] has
+  /// been called at least once.
+  @override
+  EventStreamView<R> map<R>(R Function(T value) convert) {
+    StreamSubscription<T>? subscription;
+    late final EventStreamView<R> result;
+    late final StreamController<R> newController;
+
+    newController = StreamController<R>.broadcast(
+      onListen: () {
+        // Eagerly re-snapshot the source state so that result's snapshot is
+        // never stale if the source advanced while this mapped view had no listeners.
+        result._snapshot = _snapshot.hasValue
+            ? EventSnapshot<R>.withData(convert(_snapshot.value as T))
+            : _snapshot.hasError
+                ? EventSnapshot<R>.withError(_snapshot.error!, _snapshot.stackTrace)
+                : EventSnapshot<R>.nothing();
+        subscription = _controller.stream.listen(
+          (data) {
+            final mapped = convert(data);
+            result._snapshot = EventSnapshot.withData(mapped);
+            newController.add(mapped);
+          },
+          onError: (error, stackTrace) {
+            result._snapshot = EventSnapshot.withError(error, stackTrace as StackTrace?);
+            newController.addError(error, stackTrace as StackTrace?);
+          },
+          onDone: newController.close,
+        );
+      },
+      onCancel: () {
+        subscription?.cancel();
+        subscription = null;
+      },
+    );
+
+    final initialSnapshot = _snapshot.hasValue
+        ? EventSnapshot<R>.withData(convert(_snapshot.value as T))
+        : EventSnapshot<R>.nothing();
+
+    result = EventStreamView._(initialSnapshot, newController);
+    return result;
+  }
+}
+
+/// A broadcast [Stream] with access to the latest emitted value or error.
+class EventStream<T> extends EventStreamView<T> {
+  EventStream([T? initialValue])
+      : super._(
+          (initialValue != null || isNullable<T>())
+              ? EventSnapshot<T>.withData(initialValue as T)
+              : EventSnapshot<T>.nothing(),
+          StreamController<T>.broadcast(),
+        );
+
+  /// Creates an [EventStream] that forwards events from [stream].
+  /// Values can also be emitted manually via [add] or [addError].
+  /// This [EventStream] will NOT be closed when [stream] is done; only the
+  /// internal subscription is cancelled when this [EventStream] is closed.
+  EventStream.fromStream(Stream<T> stream, [T? initialValue])
+      : super._(
+          (initialValue != null || isNullable<T>())
+              ? EventSnapshot<T>.withData(initialValue as T)
+              : EventSnapshot<T>.nothing(),
+          StreamController<T>.broadcast(),
+        ) {
     _fromStreamSubscription = stream.listen(add, onError: addError);
   }
 
   StreamSubscription<T>? _fromStreamSubscription;
 
-  EventSnapshot<T> _latestSnapshot = const EventSnapshot.nothing();
+  /// Push [data] to the stream.
+  /// Ignored (returns false) if [skipIfClosed] is true and the stream is closed.
+  /// Ignored (returns false) if [skipSame] is true and [data] == [valueOrNull].
+  /// Ignored (returns false) if [skipNull] is true and [data] is null.
+  /// Returns true if [data] was emitted.
+  bool add(T data, {bool skipIfClosed = false, bool skipSame = false, bool skipNull = false}) {
+    if (skipIfClosed && _controller.isClosed) return false;
+    if (skipSame && data == _snapshot.value) return false;
+    if (skipNull && data == null) return false;
 
-  @override
-  void _setValue(T data) => _latestSnapshot = EventSnapshot.withData(data);
-
-  /// May be null if no value has been emitted yet, or if last emitted value is an error
-  @override
-  T? get valueOrNull => _latestSnapshot.value;
-
-  @override
-  bool get hasValue => _latestSnapshot.hasValue;
-
-  /// Latest emitted error, or null if last emitted value is not an error.
-  Object? get error => _latestSnapshot.error;
-
-  /// Whether last emitted value is an error.
-  /// In which case [error] is not null.
-  bool get hasError => _latestSnapshot.hasError;
+    _snapshot = EventSnapshot.withData(data);
+    _controller.add(data);
+    return true;
+  }
 
   /// Sends or enqueues an error event.
   void addError(Object error, [StackTrace? stackTrace]) {
+    _snapshot = EventSnapshot.withError(error, stackTrace);
     _controller.addError(error, stackTrace);
-    _latestSnapshot = EventSnapshot.withError(error, stackTrace);
   }
 
-  /// Adds a subscription to this stream.
-  ///
-  /// Returns a [StreamSubscription] which handles events from this stream using the provided [onData], [onError] and [onDone] handlers.
-  /// The handlers can be changed on the subscription, but they start out as the provided functions.
-  @override
-  StreamSubscription<T> listen(void Function(T data)? onData, {Function? onError, void Function()? onDone}) => _controller.stream.listen(onData, onError: onError, onDone: onDone);
+  /// Returns this stream as its read-only [EventStreamView] interface.
+  /// Useful for exposing a read-only view to external consumers.
+  EventStreamView<T> get asView => this;
 
-  @override
+  /// Close the stream. After that, calls to [add] and [addError] are no longer allowed.
   Future<void> close() {
     _fromStreamSubscription?.cancel();
     _fromStreamSubscription = null;
-    return super.close();
+    return _controller.close();
   }
 }
 
 class EventSnapshot<T> {
   const EventSnapshot._(this.value, this.hasValue, this.error, this.stackTrace);
-  const EventSnapshot.nothing(): this._(null, false, null, null);
-  const EventSnapshot.withData(T data): this._(data, true, null, null);
-  const EventSnapshot.withError(Object error, [StackTrace? stackTrace = StackTrace.empty]): this._(null, false, error, stackTrace);
+  const EventSnapshot.nothing() : this._(null, false, null, null);
+  const EventSnapshot.withData(T data) : this._(data, true, null, null);
+  const EventSnapshot.withError(Object error, [StackTrace? stackTrace = StackTrace.empty])
+      : this._(null, false, error, stackTrace);
 
   final T? value;
   final bool hasValue;

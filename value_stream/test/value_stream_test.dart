@@ -176,9 +176,138 @@ void main() {
       expect(ds.isClosed, isTrue);
       expect(sc.isClosed, isFalse);
     });
-  });
 
-  group('EventStream', () {
+    test('asView returns DataStreamView, hides write interface', () {
+      final vs = DataStream<int>(42);
+      final DataStreamView<int> view = vs.asView; // static type is DataStreamView
+      expect(view.value, 42);
+      vs.add(99);
+      expect(view.value, 99); // view reflects live updates
+      vs.close();
+    });
+
+    test('map() returns DataStreamView with converted value', () async {
+      final vs = DataStream<int>(10);
+      final mapped = vs.map((v) => 'n=$v');
+
+      expect(mapped, isA<DataStreamView<String>>());
+      expect(mapped.value, 'n=10');
+
+      final values = <String>[];
+      final ss = mapped.listen(values.add);
+
+      vs.add(20);
+      vs.add(30);
+
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(values, ['n=20', 'n=30']);
+      expect(mapped.value, 'n=30');
+
+      ss.cancel();
+      vs.close();
+    });
+
+    test('map() is lazy: no subscription until listened', () async {
+      final vs = DataStream<int>(1);
+      final mapped = vs.map((v) => v * 2);
+
+      // Emit before any listener — value is snapshotted at map() time and
+      // stays stale until the first listener attaches.
+      vs.add(5);
+      await Future.delayed(const Duration(milliseconds: 1));
+      // Before any listener: still reflects the snapshot at map() creation (1*2=2).
+      expect(mapped.value, 2);
+
+      vs.close();
+    });
+
+    test('map() eager snapshot: stale value corrected on first listen', () async {
+      final vs = DataStream<int>(1);
+      final mapped = vs.map((v) => v * 2);
+
+      vs.add(5); // source advances while no one is listening
+      expect(mapped.value, 2); // still stale before listen
+
+      // Attaching the first listener triggers an eager re-snapshot.
+      final ss = mapped.listen(null);
+      expect(mapped.value, 10); // corrected: convert(5) = 10
+
+      ss.cancel();
+      vs.close();
+    });
+
+    test('map() eager snapshot: stale value corrected on re-listen after cancel', () async {
+      final vs = DataStream<int>(1);
+      final mapped = vs.map((v) => v * 2);
+
+      // First listen cycle.
+      final ss1 = mapped.listen(null);
+      vs.add(3);
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(mapped.value, 6);
+      ss1.cancel(); // unsubscribes from source
+
+      // Source advances while unlistened.
+      vs.add(7);
+      expect(mapped.value, 6); // still stale after cancel
+
+      // Re-listening triggers a fresh eager re-snapshot.
+      final ss2 = mapped.listen(null);
+      expect(mapped.value, 14); // corrected: convert(7) = 14
+
+      ss2.cancel();
+      vs.close();
+    });
+
+    test('map() auto-closes when source closes', () async {
+      final vs = DataStream<int>(1);
+      final mapped = vs.map((v) => v * 2);
+
+      final ss = mapped.listen(null);
+      vs.close();
+
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(mapped.isClosed, isTrue);
+      ss.cancel();
+    });
+
+    test('map() can be chained', () async {
+      final vs = DataStream<int>(3);
+      final chained = vs.map((v) => v * 2).map((v) => '$v!');
+
+      expect(chained.value, '6!');
+
+      final values = <String>[];
+      final ss = chained.listen(values.add);
+
+      vs.add(5);
+
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(values, ['10!']);
+
+      ss.cancel();
+      vs.close();
+    });
+
+    test('map() is callable on ValueStreamView typed variable', () async {
+      final DataStream<int> vs = DataStream<int>(10);
+      final ValueStreamView<int> view = vs.asView;
+      final ValueStreamView<String> mapped = view.map((v) => 'n=$v');
+
+      expect(mapped.valueOrNull, 'n=10');
+
+      final values = <String>[];
+      final ss = mapped.listen(values.add);
+
+      vs.add(20);
+
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(values, ['n=20']);
+
+      ss.cancel();
+      vs.close();
+    });
+  });
     test('takes initialValue', () {
       final es = EventStream(42);
       expect(es.valueOrNull, 42);
@@ -374,6 +503,124 @@ void main() {
       await Future.delayed(const Duration(milliseconds: 1));
       expect(es.isClosed, isTrue);
       expect(sc.isClosed, isFalse);
+    });
+
+    test('map() returns EventStreamView with converted value', () async {
+      final es = EventStream<int>(10);
+      final mapped = es.map((v) => 'n=$v');
+
+      expect(mapped, isA<EventStreamView<String>>());
+      expect(mapped.valueOrNull, 'n=10');
+
+      final values = <String>[];
+      final ss = mapped.listen(values.add);
+
+      es.add(20);
+      es.add(30);
+
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(values, ['n=20', 'n=30']);
+      expect(mapped.valueOrNull, 'n=30');
+
+      ss.cancel();
+      es.close();
+    });
+
+    test('map() forwards errors', () async {
+      final es = EventStream<int>();
+      final mapped = es.map((v) => v * 2);
+
+      Object? caughtError;
+      final ss = mapped.listen(null, onError: (e) => caughtError = e);
+
+      final err = Error();
+      es.addError(err);
+
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(caughtError, same(err));
+      expect(mapped.hasError, isTrue);
+
+      ss.cancel();
+      es.close();
+    });
+
+    test('map() with no initial value → no initial mapped value', () {
+      final es = EventStream<int>();
+      final mapped = es.map((v) => v * 2);
+      expect(mapped.valueOrNull, isNull);
+      expect(mapped.hasValue, isFalse);
+      es.close();
+    });
+
+    test('map() auto-closes when source closes', () async {
+      final es = EventStream<int>(1);
+      final mapped = es.map((v) => v * 2);
+
+      final ss = mapped.listen(null);
+      es.close();
+
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(mapped.isClosed, isTrue);
+      ss.cancel();
+    });
+
+    test('map() can be chained', () async {
+      final es = EventStream<int>(3);
+      final chained = es.map((v) => v * 2).map((v) => '$v!');
+
+      expect(chained.valueOrNull, '6!');
+
+      final values = <String>[];
+      final ss = chained.listen(values.add);
+
+      es.add(5);
+
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(values, ['10!']);
+
+      ss.cancel();
+      es.close();
+    });
+
+    test('map() eager snapshot: stale value corrected on first listen', () async {
+      final es = EventStream<int>(1);
+      final mapped = es.map((v) => v * 2);
+
+      es.add(5); // source advances while no one is listening
+      expect(mapped.valueOrNull, 2); // still stale before listen
+
+      // Attaching the first listener triggers an eager re-snapshot.
+      final ss = mapped.listen(null);
+      expect(mapped.valueOrNull, 10); // corrected: convert(5) = 10
+
+      ss.cancel();
+      es.close();
+    });
+
+    test('map() eager snapshot: stale error corrected on first listen', () async {
+      final es = EventStream<int>(1);
+      final mapped = es.map((v) => v * 2);
+
+      final err = Error();
+      es.addError(err); // source advances to error state while no one is listening
+      expect(mapped.hasError, isFalse); // still stale before listen
+
+      // Attaching the first listener triggers an eager re-snapshot of the error.
+      final ss = mapped.listen(null, onError: (_) {});
+      expect(mapped.hasError, isTrue);
+      expect(mapped.error, same(err));
+
+      ss.cancel();
+      es.close();
+    });
+
+    test('asView returns EventStreamView, hides write interface', () {
+      final es = EventStream<int>(42);
+      final EventStreamView<int> view = es.asView; // static type is EventStreamView
+      expect(view.valueOrNull, 42);
+      es.add(99);
+      expect(view.valueOrNull, 99); // view reflects live updates
+      es.close();
     });
   });
 }
