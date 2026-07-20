@@ -11,7 +11,7 @@ class DataStreamBuilder<T> extends StreamBuilderBase<T, T> {
     super.key,
     required DataStream<T> stream,
     required this.builder,
-  }) : initialData = stream.value, super(stream: stream.innerStream);
+  }) : initialData = stream.value, super(stream: stream.stream);
 
   /// The data that will be used to create the initial snapshot.
   final T initialData;
@@ -37,7 +37,7 @@ class EventStreamBuilder<T> extends StreamBuilder<T> {
     super.key,
     EventStream<T>? stream,
     required super.builder,
-  }) : initialError = stream?.error, super(initialData: stream?.valueOrNull, stream: stream?.innerStream);
+  }) : initialError = stream?.error, super(initialData: stream?.valueOrNull, stream: stream?.stream);
 
   /// Same as default [EventStreamBuilder] constructor, but with a [Stream] instead of a [EventStream].
   const EventStreamBuilder.fromStream({
