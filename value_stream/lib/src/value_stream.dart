@@ -159,6 +159,10 @@ class DataStream<T> extends DataStreamView<T> {
     return result;
   }
 
+  /// Returns this stream as its read-only [DataStreamView] interface.
+  /// Useful for exposing a read-only view to external consumers.
+  DataStreamView<T> get asView => this;
+
   /// Close the stream. After that, calls to [add] are no longer allowed.
   Future<void> close() {
     _fromStreamSubscription?.cancel();
@@ -305,6 +309,10 @@ class EventStream<T> extends EventStreamView<T> {
     );
     return result;
   }
+
+  /// Returns this stream as its read-only [EventStreamView] interface.
+  /// Useful for exposing a read-only view to external consumers.
+  EventStreamView<T> get asView => this;
 
   /// Close the stream. After that, calls to [add] and [addError] are no longer allowed.
   Future<void> close() {
