@@ -82,6 +82,12 @@ class DataStreamView<T> extends ValueStreamView<T> {
   /// The returned view uses a **lazy subscription**: it only subscribes to this
   /// stream when the first listener attaches, and unsubscribes when the last
   /// listener leaves. It automatically closes when this stream closes.
+  ///
+  /// **Note on [value] staleness:** [value] is snapshotted at construction time
+  /// and again each time a listener attaches. If the source advances while the
+  /// returned view has no listeners, reading [value] before the first [listen]
+  /// call will return a stale (construction-time) value. [value] is guaranteed
+  /// up-to-date only after [listen] has been called at least once.
   @override
   DataStreamView<R> map<R>(R Function(T value) convert) {
     StreamSubscription<T>? subscription;
@@ -203,6 +209,13 @@ class EventStreamView<T> extends ValueStreamView<T> {
   /// The returned view uses a **lazy subscription**: it only subscribes to this
   /// stream when the first listener attaches, and unsubscribes when the last
   /// listener leaves. It automatically closes when this stream closes.
+  ///
+  /// **Note on [valueOrNull] staleness:** the snapshot is taken at construction
+  /// time and again each time a listener attaches. If the source advances while
+  /// the returned view has no listeners, reading [valueOrNull] (or [error])
+  /// before the first [listen] call will return a stale (construction-time)
+  /// snapshot. The snapshot is guaranteed up-to-date only after [listen] has
+  /// been called at least once.
   @override
   EventStreamView<R> map<R>(R Function(T value) convert) {
     StreamSubscription<T>? subscription;
