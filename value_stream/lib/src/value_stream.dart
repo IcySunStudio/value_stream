@@ -64,9 +64,6 @@ class DataStreamView<T> extends ValueStreamView<T> {
   @override
   T get valueOrNull => _value;
 
-  /// Always true — [DataStreamView] always has a value.
-  bool get hasValue => true;
-
   @override
   Stream<T> get stream => _controller.stream;
 

@@ -205,6 +205,23 @@ void main() {
       vs.close();
     });
 
+    test('where() close propagates to result', () async {
+      final vs = DataStream<int>(10);
+      final filtered = vs.where((v) => v > 5);
+      vs.close();
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(filtered.isClosed, isTrue);
+    });
+
+    test('asView returns DataStreamView, hides write interface', () {
+      final vs = DataStream<int>(42);
+      final DataStreamView<int> view = vs.asView; // static type is DataStreamView
+      expect(view.value, 42);
+      vs.add(99);
+      expect(view.value, 99); // view reflects live updates
+      vs.close();
+    });
+
     test('map() returns DataStreamView with converted value', () async {
       final vs = DataStream<int>(10);
       final mapped = vs.map((v) => 'n=$v');
@@ -561,6 +578,33 @@ void main() {
       await Future.delayed(const Duration(milliseconds: 1));
       expect(mapped.isClosed, isTrue);
       ss.cancel();
+    });
+
+    test('map() can be chained', () async {
+      final es = EventStream<int>(3);
+      final chained = es.map((v) => v * 2).map((v) => '$v!');
+
+      expect(chained.valueOrNull, '6!');
+
+      final values = <String>[];
+      final ss = chained.listen(values.add);
+
+      es.add(5);
+
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(values, ['10!']);
+
+      ss.cancel();
+      es.close();
+    });
+
+    test('asView returns EventStreamView, hides write interface', () {
+      final es = EventStream<int>(42);
+      final EventStreamView<int> view = es.asView; // static type is EventStreamView
+      expect(view.valueOrNull, 42);
+      es.add(99);
+      expect(view.valueOrNull, 99); // view reflects live updates
+      es.close();
     });
   });
 }
