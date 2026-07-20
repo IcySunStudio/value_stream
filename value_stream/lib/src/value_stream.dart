@@ -26,6 +26,9 @@ abstract class ValueStreamView<T> {
   /// May throw if the first value is an error.
   Future<T> get first;
 
+  /// Returns a new [ValueStreamView] that applies [convert] to each value.
+  ValueStreamView<R> map<R>(R Function(T value) convert);
+
   /// Waits for the next element emitted by this stream, and returns it.
   /// If the stream emits an error, it will be propagated to the returned future.
   /// If the stream is closed before any data is emitted, it will throw a [StateError].
@@ -79,6 +82,7 @@ class DataStreamView<T> extends ValueStreamView<T> {
   /// The returned view uses a **lazy subscription**: it only subscribes to this
   /// stream when the first listener attaches, and unsubscribes when the last
   /// listener leaves. It automatically closes when this stream closes.
+  @override
   DataStreamView<R> map<R>(R Function(T value) convert) {
     StreamSubscription<T>? subscription;
     late final DataStreamView<R> result;
@@ -207,6 +211,7 @@ class EventStreamView<T> extends ValueStreamView<T> {
   /// The returned view uses a **lazy subscription**: it only subscribes to this
   /// stream when the first listener attaches, and unsubscribes when the last
   /// listener leaves. It automatically closes when this stream closes.
+  @override
   EventStreamView<R> map<R>(R Function(T value) convert) {
     StreamSubscription<T>? subscription;
     late final EventStreamView<R> result;

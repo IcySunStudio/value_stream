@@ -285,9 +285,26 @@ void main() {
       ss.cancel();
       vs.close();
     });
-  });
 
-  group('EventStream', () {
+    test('map() is callable on ValueStreamView typed variable', () async {
+      final DataStream<int> vs = DataStream<int>(10);
+      final ValueStreamView<int> view = vs.asView;
+      final ValueStreamView<String> mapped = view.map((v) => 'n=$v');
+
+      expect(mapped.valueOrNull, 'n=10');
+
+      final values = <String>[];
+      final ss = mapped.listen(values.add);
+
+      vs.add(20);
+
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(values, ['n=20']);
+
+      ss.cancel();
+      vs.close();
+    });
+  });
     test('takes initialValue', () {
       final es = EventStream(42);
       expect(es.valueOrNull, 42);

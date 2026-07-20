@@ -1,3 +1,6 @@
+## 2.1.0
+* New: `map()` is now declared as an abstract method on `ValueStreamView`, making it callable on base-typed references.
+
 ## 2.0.0
 * BREAKING: Introduced read-only `*View` hierarchy (`ValueStreamView`, `DataStreamView`, `EventStreamView`) separate from writable `*Stream` classes.
 * BREAKING: `ValueStream` base class removed; replaced by `ValueStreamView`.
