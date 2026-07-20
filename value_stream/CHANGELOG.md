@@ -1,5 +1,6 @@
 ## 2.1.0
 * New: `map()` is now declared as an abstract method on `ValueStreamView`, making it callable on base-typed references.
+* Fix: `map()` now eagerly re-snapshots the source value/error when the first listener attaches (or when re-listening after all listeners cancelled), so that `value`/`valueOrNull` is never stale after a listen-cycle gap.
 
 ## 2.0.0
 * BREAKING: Introduced read-only `*View` hierarchy (`ValueStreamView`, `DataStreamView`, `EventStreamView`) separate from writable `*Stream` classes.

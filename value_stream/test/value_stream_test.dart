@@ -247,12 +247,51 @@ void main() {
       final vs = DataStream<int>(1);
       final mapped = vs.map((v) => v * 2);
 
-      // Emit before any listener — value is snapshotted at map() time
+      // Emit before any listener — value is snapshotted at map() time and
+      // stays stale until the first listener attaches.
       vs.add(5);
       await Future.delayed(const Duration(milliseconds: 1));
-      // mapped.value reflects the snapshot at creation (1*2=2), not the unlistened update
+      // Before any listener: still reflects the snapshot at map() creation (1*2=2).
       expect(mapped.value, 2);
 
+      vs.close();
+    });
+
+    test('map() eager snapshot: stale value corrected on first listen', () async {
+      final vs = DataStream<int>(1);
+      final mapped = vs.map((v) => v * 2);
+
+      vs.add(5); // source advances while no one is listening
+      expect(mapped.value, 2); // still stale before listen
+
+      // Attaching the first listener triggers an eager re-snapshot.
+      final ss = mapped.listen(null);
+      expect(mapped.value, 10); // corrected: convert(5) = 10
+
+      ss.cancel();
+      vs.close();
+    });
+
+    test('map() eager snapshot: stale value corrected on re-listen after cancel', () async {
+      final vs = DataStream<int>(1);
+      final mapped = vs.map((v) => v * 2);
+
+      // First listen cycle.
+      final ss1 = mapped.listen(null);
+      vs.add(3);
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(mapped.value, 6);
+      ss1.cancel(); // unsubscribes from source
+
+      // Source advances while unlistened.
+      vs.add(7);
+      expect(mapped.value, 6); // still stale after cancel
+
+      // Re-listening triggers a fresh eager re-snapshot.
+      final ss2 = mapped.listen(null);
+      expect(mapped.value, 14); // corrected: convert(7) = 14
+
+      ss2.cancel();
       vs.close();
     });
 
@@ -610,6 +649,38 @@ void main() {
 
       await Future.delayed(const Duration(milliseconds: 1));
       expect(values, ['10!']);
+
+      ss.cancel();
+      es.close();
+    });
+
+    test('map() eager snapshot: stale value corrected on first listen', () async {
+      final es = EventStream<int>(1);
+      final mapped = es.map((v) => v * 2);
+
+      es.add(5); // source advances while no one is listening
+      expect(mapped.valueOrNull, 2); // still stale before listen
+
+      // Attaching the first listener triggers an eager re-snapshot.
+      final ss = mapped.listen(null);
+      expect(mapped.valueOrNull, 10); // corrected: convert(5) = 10
+
+      ss.cancel();
+      es.close();
+    });
+
+    test('map() eager snapshot: stale error corrected on first listen', () async {
+      final es = EventStream<int>(1);
+      final mapped = es.map((v) => v * 2);
+
+      final err = Error();
+      es.addError(err); // source advances to error state while no one is listening
+      expect(mapped.hasError, isFalse); // still stale before listen
+
+      // Attaching the first listener triggers an eager re-snapshot of the error.
+      final ss = mapped.listen(null, onError: (_) {});
+      expect(mapped.hasError, isTrue);
+      expect(mapped.error, same(err));
 
       ss.cancel();
       es.close();

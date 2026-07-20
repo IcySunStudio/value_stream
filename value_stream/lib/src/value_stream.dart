@@ -90,6 +90,9 @@ class DataStreamView<T> extends ValueStreamView<T> {
 
     newController = StreamController<R>.broadcast(
       onListen: () {
+        // Eagerly re-snapshot the source value so that result.value is never
+        // stale if the source advanced while this mapped view had no listeners.
+        result._value = convert(_value);
         subscription = _controller.stream.listen(
           (data) {
             final mapped = convert(data);
@@ -219,6 +222,13 @@ class EventStreamView<T> extends ValueStreamView<T> {
 
     newController = StreamController<R>.broadcast(
       onListen: () {
+        // Eagerly re-snapshot the source state so that result's snapshot is
+        // never stale if the source advanced while this mapped view had no listeners.
+        result._snapshot = _snapshot.hasValue
+            ? EventSnapshot<R>.withData(convert(_snapshot.value as T))
+            : _snapshot.hasError
+                ? EventSnapshot<R>.withError(_snapshot.error!, _snapshot.stackTrace)
+                : EventSnapshot<R>.nothing();
         subscription = _controller.stream.listen(
           (data) {
             final mapped = convert(data);
