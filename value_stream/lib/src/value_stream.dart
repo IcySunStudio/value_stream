@@ -11,6 +11,10 @@ abstract class ValueStreamView<T> {
   /// Latest emitted value, or null if no value is available yet.
   T? get valueOrNull;
 
+  /// Whether a value is currently available.
+  /// Distinguishes "no value yet" from "current value is null".
+  bool get hasValue;
+
   /// Adds a subscription to this stream.
   ///
   /// Returns a [StreamSubscription] which handles events from this stream using
@@ -63,6 +67,10 @@ class DataStreamView<T> extends ValueStreamView<T> {
 
   @override
   T get valueOrNull => _value;
+
+  /// Always true — [DataStreamView] always has a value.
+  @override
+  bool get hasValue => true;
 
   @override
   Stream<T> get stream => _controller.stream;
