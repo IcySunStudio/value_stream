@@ -106,6 +106,17 @@ class DataStream<T> extends ValueStream<T> {
   @override
   StreamSubscription<T> listen(void Function(T data)? onData, {void Function()? onDone}) => _controller.stream.listen(onData, onDone: onDone);
 
+  /// Returns a new [DataStream] of type [T?].
+  /// Values that satisfy [test] are forwarded as-is; values that do not are replaced with null.
+  DataStream<T?> where(bool Function(T value) test) {
+    final result = DataStream<T?>(test(value) ? value : null);
+    innerStream.listen(
+      (data) => result.add(test(data) ? data : null),
+      onDone: result.close,
+    );
+    return result;
+  }
+
   @override
   Future<void> close() {
     _fromStreamSubscription?.cancel();
@@ -156,6 +167,19 @@ class EventStream<T> extends ValueStream<T> {
   /// The handlers can be changed on the subscription, but they start out as the provided functions.
   @override
   StreamSubscription<T> listen(void Function(T data)? onData, {Function? onError, void Function()? onDone}) => _controller.stream.listen(onData, onError: onError, onDone: onDone);
+
+  /// Returns a new [EventStream] of type [T?].
+  /// Values that satisfy [test] are forwarded as-is; values that do not are replaced with null.
+  EventStream<T?> where(bool Function(T value) test) {
+    final current = valueOrNull;
+    final result = EventStream<T?>(current != null && test(current) ? current : null);
+    innerStream.listen(
+      (data) => result.add(test(data) ? data : null),
+      onError: result.addError,
+      onDone: result.close,
+    );
+    return result;
+  }
 
   @override
   Future<void> close() {

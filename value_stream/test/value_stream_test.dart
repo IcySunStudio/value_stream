@@ -155,6 +155,34 @@ void main() {
       expect(ds.isClosed, isTrue);
       expect(sc.isClosed, isFalse);
     });
+
+    test('where() returns same type as nullable', () async {
+      final vs = DataStream<int>(10);
+      final filtered = vs.where((v) => v > 5);
+
+      expect(filtered, isA<DataStream<int?>>());
+      expect(filtered.value, 10); // passes predicate
+
+      final values = <int?>[];
+      final ss = filtered.listen(values.add);
+
+      vs.add(8);  // passes
+      vs.add(3);  // fails → null
+      vs.add(7);  // passes
+
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(values, [8, null, 7]);
+
+      ss.cancel();
+      vs.close();
+    });
+
+    test('where() initial value fails predicate → null', () {
+      final vs = DataStream<int>(2);
+      final filtered = vs.where((v) => v > 5);
+      expect(filtered.value, isNull);
+      vs.close();
+    });
   });
 
   group('EventStream', () {
@@ -333,6 +361,41 @@ void main() {
       await Future.delayed(const Duration(milliseconds: 1));
       expect(es.isClosed, isTrue);
       expect(sc.isClosed, isFalse);
+    });
+
+    test('where() returns same type as nullable', () async {
+      final es = EventStream<int>(10);
+      final filtered = es.where((v) => v > 5);
+
+      expect(filtered, isA<EventStream<int?>>());
+      expect(filtered.valueOrNull, 10); // passes predicate
+
+      final values = <int?>[];
+      final ss = filtered.listen(values.add);
+
+      es.add(8);  // passes
+      es.add(3);  // fails → null
+      es.add(7);  // passes
+
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(values, [8, null, 7]);
+
+      ss.cancel();
+      es.close();
+    });
+
+    test('where() initial value fails predicate → null', () {
+      final es = EventStream<int>(2);
+      final filtered = es.where((v) => v > 5);
+      expect(filtered.valueOrNull, isNull);
+      es.close();
+    });
+
+    test('where() with no initial value → null', () {
+      final es = EventStream<int>();
+      final filtered = es.where((v) => v > 5);
+      expect(filtered.valueOrNull, isNull);
+      es.close();
     });
   });
 }
