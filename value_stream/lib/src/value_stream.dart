@@ -24,7 +24,7 @@ abstract class ValueStreamView<T> {
   /// The first element of this stream.
   /// Returns the last emitted value if available, or waits for the first element.
   /// May throw if the first value is an error.
-  Future<T> get first => valueOrNull != null ? Future.value(valueOrNull as T) : stream.first;
+  Future<T> get first;
 
   /// Waits for the next element emitted by this stream, and returns it.
   /// If the stream emits an error, it will be propagated to the returned future.
@@ -140,9 +140,9 @@ class DataStream<T> extends DataStreamView<T> {
     return true;
   }
 
-  /// Returns a new [DataStream] of type [T?].
+  /// Returns a new [DataStreamView] of type [T?].
   /// Values that satisfy [test] are forwarded as-is; values that do not are replaced with null.
-  DataStream<T?> where(bool Function(T value) test) {
+  DataStreamView<T?> where(bool Function(T value) test) {
     final result = DataStream<T?>(test(_value) ? _value : null);
     _controller.stream.listen(
       (data) => result.add(test(data) ? data : null),
@@ -178,7 +178,8 @@ class EventStreamView<T> extends ValueStreamView<T> {
   @override
   T? get valueOrNull => _snapshot.value;
 
-  /// Whether a data value (not an error) has ever been emitted.
+  /// Whether a data value (not an error) has been emitted.
+  /// Distinguishes "no value yet" from "current value is null".
   bool get hasValue => _snapshot.hasValue;
 
   /// Latest emitted error, or null if the last event was not an error.
@@ -284,9 +285,9 @@ class EventStream<T> extends EventStreamView<T> {
     _controller.addError(error, stackTrace);
   }
 
-  /// Returns a new [EventStream] of type [T?].
+  /// Returns a new [EventStreamView] of type [T?].
   /// Values that satisfy [test] are forwarded as-is; values that do not are replaced with null.
-  EventStream<T?> where(bool Function(T value) test) {
+  EventStreamView<T?> where(bool Function(T value) test) {
     final current = valueOrNull;
     final result = EventStream<T?>(current != null && test(current) ? current : null);
     _controller.stream.listen(

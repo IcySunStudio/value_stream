@@ -115,6 +115,27 @@ void main() {
       vs.close();
     });
 
+    test('first getter returns null immediately for DataStream<int?> with null value', () async {
+      final vs = DataStream<int?>(null);
+      expect(vs.value, isNull);
+
+      // Must resolve immediately without waiting for the next emission
+      final first = await vs.first.timeout(const Duration(milliseconds: 100));
+      expect(first, isNull);
+
+      vs.close();
+    });
+
+    test('first getter returns null immediately for DataStream<int?> after emitting null', () async {
+      final vs = DataStream<int?>(42);
+      vs.add(null);
+
+      final first = await vs.first.timeout(const Duration(milliseconds: 100));
+      expect(first, isNull);
+
+      vs.close();
+    });
+
     test('next getter', () async {
       final vs = DataStream(42);
       var nextFuture = vs.next;
@@ -156,11 +177,11 @@ void main() {
       expect(sc.isClosed, isFalse);
     });
 
-    test('where() returns same type as nullable', () async {
+    test('where() returns DataStreamView of nullable type', () async {
       final vs = DataStream<int>(10);
       final filtered = vs.where((v) => v > 5);
 
-      expect(filtered, isA<DataStream<int?>>());
+      expect(filtered, isA<DataStreamView<int?>>());
       expect(filtered.value, 10); // passes predicate
 
       final values = <int?>[];
@@ -181,6 +202,70 @@ void main() {
       final vs = DataStream<int>(2);
       final filtered = vs.where((v) => v > 5);
       expect(filtered.value, isNull);
+      vs.close();
+    });
+
+    test('map() returns DataStreamView with converted value', () async {
+      final vs = DataStream<int>(10);
+      final mapped = vs.map((v) => 'n=$v');
+
+      expect(mapped, isA<DataStreamView<String>>());
+      expect(mapped.value, 'n=10');
+
+      final values = <String>[];
+      final ss = mapped.listen(values.add);
+
+      vs.add(20);
+      vs.add(30);
+
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(values, ['n=20', 'n=30']);
+      expect(mapped.value, 'n=30');
+
+      ss.cancel();
+      vs.close();
+    });
+
+    test('map() is lazy: no subscription until listened', () async {
+      final vs = DataStream<int>(1);
+      final mapped = vs.map((v) => v * 2);
+
+      // Emit before any listener — value is snapshotted at map() time
+      vs.add(5);
+      await Future.delayed(const Duration(milliseconds: 1));
+      // mapped.value reflects the snapshot at creation (1*2=2), not the unlistened update
+      expect(mapped.value, 2);
+
+      vs.close();
+    });
+
+    test('map() auto-closes when source closes', () async {
+      final vs = DataStream<int>(1);
+      final mapped = vs.map((v) => v * 2);
+
+      final ss = mapped.listen(null);
+      vs.close();
+
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(mapped.isClosed, isTrue);
+      ss.cancel();
+    });
+
+    test('map() can be chained', () async {
+      final vs = DataStream<int>(3);
+      final chained = vs.map((v) => v * 2).map((v) => '$v!');
+
+      expect(chained.value, '6!');
+
+      final values = <String>[];
+      final ss = chained.listen(values.add);
+
+      vs.add(5);
+
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(values, ['10!']);
+
+      ss.cancel();
       vs.close();
     });
   });
@@ -302,8 +387,8 @@ void main() {
       es.close();
     });
 
-    test('first getter', () async {
-      final es = EventStream();
+    test('first getter waits for first emission when no initial value', () async {
+      final es = EventStream<int>();
       expect(es.valueOrNull, isNull);
       final firstFuture = es.first;
       es.add(42);
@@ -312,6 +397,26 @@ void main() {
 
       es.add(50);
       expect(es.valueOrNull, 50);
+
+      es.close();
+    });
+
+    test('first getter returns null immediately for EventStream<int?> with null initial value', () async {
+      final es = EventStream<int?>(null);
+      expect(es.valueOrNull, isNull);
+
+      final first = await es.first.timeout(const Duration(milliseconds: 100));
+      expect(first, isNull);
+
+      es.close();
+    });
+
+    test('first getter returns null immediately for EventStream<int?> after emitting null', () async {
+      final es = EventStream<int?>(42);
+      es.add(null);
+
+      final first = await es.first.timeout(const Duration(milliseconds: 100));
+      expect(first, isNull);
 
       es.close();
     });
@@ -363,11 +468,11 @@ void main() {
       expect(sc.isClosed, isFalse);
     });
 
-    test('where() returns same type as nullable', () async {
+    test('where() returns EventStreamView of nullable type', () async {
       final es = EventStream<int>(10);
       final filtered = es.where((v) => v > 5);
 
-      expect(filtered, isA<EventStream<int?>>());
+      expect(filtered, isA<EventStreamView<int?>>());
       expect(filtered.valueOrNull, 10); // passes predicate
 
       final values = <int?>[];
@@ -391,11 +496,71 @@ void main() {
       es.close();
     });
 
-    test('where() with no initial value → null', () {
+    test('where() with no initial value', () {
       final es = EventStream<int>();
       final filtered = es.where((v) => v > 5);
       expect(filtered.valueOrNull, isNull);
+      expect(filtered.hasValue, isFalse);
       es.close();
+    });
+
+    test('map() returns EventStreamView with converted value', () async {
+      final es = EventStream<int>(10);
+      final mapped = es.map((v) => 'n=$v');
+
+      expect(mapped, isA<EventStreamView<String>>());
+      expect(mapped.valueOrNull, 'n=10');
+
+      final values = <String>[];
+      final ss = mapped.listen(values.add);
+
+      es.add(20);
+      es.add(30);
+
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(values, ['n=20', 'n=30']);
+      expect(mapped.valueOrNull, 'n=30');
+
+      ss.cancel();
+      es.close();
+    });
+
+    test('map() forwards errors', () async {
+      final es = EventStream<int>();
+      final mapped = es.map((v) => v * 2);
+
+      Object? caughtError;
+      final ss = mapped.listen(null, onError: (e) => caughtError = e);
+
+      final err = Error();
+      es.addError(err);
+
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(caughtError, same(err));
+      expect(mapped.hasError, isTrue);
+
+      ss.cancel();
+      es.close();
+    });
+
+    test('map() with no initial value → no initial mapped value', () {
+      final es = EventStream<int>();
+      final mapped = es.map((v) => v * 2);
+      expect(mapped.valueOrNull, isNull);
+      expect(mapped.hasValue, isFalse);
+      es.close();
+    });
+
+    test('map() auto-closes when source closes', () async {
+      final es = EventStream<int>(1);
+      final mapped = es.map((v) => v * 2);
+
+      final ss = mapped.listen(null);
+      es.close();
+
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(mapped.isClosed, isTrue);
+      ss.cancel();
     });
   });
 }
