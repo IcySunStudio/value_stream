@@ -5,7 +5,6 @@
 * BREAKING: `DataStream`/`EventStream` no longer implement `Sink`.
 * New: `map()` operator on `DataStreamView` and `EventStreamView`, returning a read-only `*View`.
 * New: `where()` operator on `DataStream` and `EventStream`, returning a nullable read-only `*View`.
-* New: `dispose()` method on all types; derived views auto-dispose when source closes.
 
 ## 1.1.1
 * New: `hasValue` getter on `ValueStream`, `DataStream`, and `EventStream` to distinguish "no value yet" from "current value is null".
