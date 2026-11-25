@@ -14,18 +14,13 @@ abstract class ValueStream<T> implements Sink<T> {
   final _controller = StreamController<T>.broadcast();
 
   /// Push [data] to the stream.
-  /// Ignored if [skipIfClosed] is true and the stream is closed.
-  /// Ignored if [skipSame] is true and [data] == [value].
-  /// Ignored if [skipNull] is true and [data] is null.
-  /// Return true if [value] was added.
+  /// Ignored if the stream is closed.
+  /// Ignored if [skipSame] is true and [data] == [valueOrNull].
+  /// Return true if [data] was added.
   @override
-  bool add(T data, {bool skipIfClosed = false, bool skipSame = false, bool skipNull = false}) {
-    if (_controller.isClosed) {
-      if (skipIfClosed) return false;
-      throw StateError('Cannot add new events after calling close');
-    }
+  bool add(T data, {bool skipSame = false}) {
+    if (_controller.isClosed) return false;
     if (skipSame && hasValue && data == valueOrNull) return false;
-    if (skipNull && data == null) return false;
 
     _setValue(data);
     _controller.add(data);
@@ -161,8 +156,9 @@ class EventStream<T> extends ValueStream<T> {
   bool get hasError => _latestSnapshot.hasError;
 
   /// Sends or enqueues an error event.
+  /// Ignored if the stream is closed.
   void addError(Object error, [StackTrace? stackTrace]) {
-    if (_controller.isClosed) throw StateError('Cannot add new events after calling close');
+    if (_controller.isClosed) return;
 
     _latestSnapshot = EventSnapshot.withError(error, stackTrace);
     _controller.addError(error, stackTrace);

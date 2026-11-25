@@ -1,5 +1,5 @@
 ## 2.0.0
-* Fix `add()` changing the latest value before throwing when the stream is closed.
+* BREAKING: `add()` no longer has `skipIfClosed` and `skipNull` parameters. Adding to a closed stream is now always ignored (`add()` returns false, `addError()` does nothing) instead of throwing. Replace `skipNull: true` with a null check on the caller side.
 * Fix `add(skipSame: true)` ignoring a `null` value on an `EventStream` that is in error state.
 * Fix `EventStream.addError()` updating its state after emitting the error, unlike `add()`.
 

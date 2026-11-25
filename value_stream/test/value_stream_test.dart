@@ -89,15 +89,13 @@ void main() {
       vs.add(1);
 
       vs.add(null);
-      vs.add(null, skipNull: true);
       vs.add(null);
 
-      vs.add(2, skipIfClosed: true);
-      vs.add(3, skipIfClosed: true, skipNull: true, skipSame: true);
+      vs.add(2);
+      vs.add(3, skipSame: true);
 
       vs.close();
-      expect(vs.add(4, skipIfClosed: true), isFalse);
-      expect(() => vs.add(4), throwsA(isA<Error>()));
+      expect(vs.add(4), isFalse);
 
       await Future.delayed(const Duration(milliseconds: 1));
       expect(values, [1, 1, 1, null, null, 2, 3]);
@@ -262,15 +260,13 @@ void main() {
       es.add(1);
 
       es.add(null);
-      es.add(null, skipNull: true);
       es.add(null);
 
-      es.add(2, skipIfClosed: true);
-      es.add(3, skipIfClosed: true, skipNull: true, skipSame: true);
+      es.add(2);
+      es.add(3, skipSame: true);
 
       es.close();
-      expect(es.add(4, skipIfClosed: true), isFalse);
-      expect(() => es.add(4), throwsA(isA<Error>()));
+      expect(es.add(4), isFalse);
 
       await Future.delayed(const Duration(milliseconds: 1));
       expect(values, [1, 1, 1, null, null, 2, 3]);
@@ -293,14 +289,14 @@ void main() {
       es.close();
     });
 
-    test('add() and addError() on a closed stream keep the state untouched', () {
+    test('add() and addError() are ignored on a closed stream', () {
       final es = EventStream(1);
       es.close();
 
-      expect(() => es.add(2), throwsA(isA<StateError>()));
+      expect(es.add(2), isFalse);
       expect(es.valueOrNull, 1);
 
-      expect(() => es.addError(Error()), throwsA(isA<StateError>()));
+      es.addError(Error());
       expect(es.hasError, isFalse);
       expect(es.valueOrNull, 1);
     });
