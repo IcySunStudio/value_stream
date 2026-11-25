@@ -1,6 +1,9 @@
 ## 2.0.0
 * BREAKING: `add()` no longer has `skipIfClosed` and `skipNull` parameters. Adding to a closed stream is now always ignored (`add()` returns false, `addError()` does nothing) instead of throwing. Replace `skipNull: true` with a null check on the caller side.
-* Fix `add(skipSame: true)` ignoring a `null` value on an `EventStream` that is in error state.
+* BREAKING: `add()` no longer has a `skipSame` parameter. Pass `distinct: true` to the stream constructor instead, so that values equal (`==`) to the current one are always ignored. Beware that adding the same instance again after mutating it is then ignored too.
+* BREAKING: `EventStream`'s initial value is no longer optional. Use `EventStream(value)` for a stream with a value (even `null`), and the new `EventStream.empty()` for a stream with no value yet. Previously, `EventStream<T?>()` started with a `null` value.
+* BREAKING: `EventStream.fromStream`'s initial value is now the named `initialValue` parameter. If omitted, the stream has no value until `stream` emits, even for a nullable type.
+* New: `distinct` option also applies to values coming from the stream given to `fromStream` constructors.
 * Fix `EventStream.addError()` updating its state after emitting the error, unlike `add()`.
 
 ## 1.1.1

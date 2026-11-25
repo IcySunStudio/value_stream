@@ -76,7 +76,7 @@ void main() {
       vs.close();
     });
 
-    test('add() arguments', () async {
+    test('add() is ignored when closed', () async {
       final vs = DataStream<int?>(0);
       expect(vs.value, 0);
 
@@ -85,23 +85,47 @@ void main() {
 
       vs.add(1);
       vs.add(1);
-      vs.add(1, skipSame: true);
-      vs.add(1);
-
       vs.add(null);
       vs.add(null);
-
-      vs.add(2);
-      vs.add(3, skipSame: true);
+      vs.add(3);
 
       vs.close();
       expect(vs.add(4), isFalse);
 
       await Future.delayed(const Duration(milliseconds: 1));
-      expect(values, [1, 1, 1, null, null, 2, 3]);
+      expect(values, [1, 1, null, null, 3]);
       expect(vs.value, 3);
 
       ss.cancel();
+    });
+
+    test('distinct ignores values equal to the current one', () async {
+      final vs = DataStream<int?>(0, distinct: true);
+      expect(vs.distinct, isTrue);
+
+      final values = <int?>[];
+      final ss = vs.listen(values.add);
+
+      expect(vs.add(0), isFalse);
+      expect(vs.add(1), isTrue);
+      expect(vs.add(1), isFalse);
+      expect(vs.add(null), isTrue);
+      expect(vs.add(null), isFalse);
+      expect(vs.add(1), isTrue);
+
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(values, [1, null, 1]);
+      expect(vs.value, 1);
+
+      ss.cancel();
+      vs.close();
+    });
+
+    test('values are not distinct by default', () async {
+      final vs = DataStream(0);
+      expect(vs.distinct, isFalse);
+      expect(vs.add(0), isTrue);
+      expect(vs.add(0), isTrue);
       vs.close();
     });
 
@@ -173,6 +197,23 @@ void main() {
       await Future.delayed(const Duration(milliseconds: 1));
       expect(ds.isClosed, isTrue);
       expect(sc.isClosed, isFalse);
+    });
+
+    test('fromStream with distinct', () async {
+      final sc = StreamController<int>();
+      final ds = DataStream.fromStream(sc.stream, 42, distinct: true);
+
+      final values = <int>[];
+      final ss = ds.listen(values.add);
+
+      sc.add(42);
+      sc.add(1);
+      sc.add(1);
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(values, [1]);
+
+      ss.cancel();
+      ds.close();
     });
   });
 
@@ -247,7 +288,7 @@ void main() {
       es.close();
     });
 
-    test('add() arguments', () async {
+    test('add() is ignored when closed', () async {
       final es = EventStream<int?>(0);
       expect(es.valueOrNull, 0);
 
@@ -256,37 +297,65 @@ void main() {
 
       es.add(1);
       es.add(1);
-      es.add(1, skipSame: true);
-      es.add(1);
-
       es.add(null);
       es.add(null);
-
-      es.add(2);
-      es.add(3, skipSame: true);
+      es.add(3);
 
       es.close();
       expect(es.add(4), isFalse);
 
       await Future.delayed(const Duration(milliseconds: 1));
-      expect(values, [1, 1, 1, null, null, 2, 3]);
+      expect(values, [1, 1, null, null, 3]);
       expect(es.valueOrNull, 3);
+
+      ss.cancel();
+    });
+
+    test('distinct ignores values equal to the current one', () async {
+      final es = EventStream<int?>(0, distinct: true);
+      expect(es.distinct, isTrue);
+
+      final values = <int?>[];
+      final ss = es.listen(values.add);
+
+      expect(es.add(0), isFalse);
+      expect(es.add(1), isTrue);
+      expect(es.add(1), isFalse);
+      expect(es.add(null), isTrue);
+      expect(es.add(null), isFalse);
+
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(values, [1, null]);
 
       ss.cancel();
       es.close();
     });
 
-    test('add(skipSame) does not ignore null when stream is in error', () {
-      final es = EventStream<int?>(null);
-      expect(es.add(null, skipSame: true), isFalse);
+    test('distinct does not ignore null when stream is empty or in error', () {
+      final es = EventStream<int?>.empty(distinct: true);
+      expect(es.hasValue, isFalse);
+      expect(es.add(null), isTrue);
+      expect(es.add(null), isFalse);
 
       es.addError(Error());
       expect(es.hasValue, isFalse);
-      expect(es.add(null, skipSame: true), isTrue);
+      expect(es.add(null), isTrue);
       expect(es.hasValue, isTrue);
       expect(es.hasError, isFalse);
 
       es.close();
+    });
+
+    test('empty has no value, unlike a nullable stream initialized with null', () {
+      final empty = EventStream<int?>.empty();
+      expect(empty.hasValue, isFalse);
+
+      final withNull = EventStream<int?>(null);
+      expect(withNull.hasValue, isTrue);
+      expect(withNull.valueOrNull, isNull);
+
+      empty.close();
+      withNull.close();
     });
 
     test('add() and addError() are ignored on a closed stream', () {
@@ -317,7 +386,7 @@ void main() {
     });
 
     test('first getter waits for first emission when no initial value', () async {
-      final es = EventStream<int>();
+      final es = EventStream<int>.empty();
       expect(es.valueOrNull, isNull);
       final firstFuture = es.first;
       es.add(42);
@@ -351,7 +420,7 @@ void main() {
     });
 
     test('next getter', () async {
-      final es = EventStream();
+      final es = EventStream<int>.empty();
       expect(es.valueOrNull, isNull);
       var nextFuture = es.next;
       es.add(42);
@@ -395,6 +464,44 @@ void main() {
       await Future.delayed(const Duration(milliseconds: 1));
       expect(es.isClosed, isTrue);
       expect(sc.isClosed, isFalse);
+    });
+
+    test('fromStream distinguishes an omitted initialValue from null', () {
+      final omitted = EventStream<int?>.fromStream(const Stream.empty());
+      expect(omitted.hasValue, isFalse);
+
+      final withNull = EventStream<int?>.fromStream(const Stream.empty(), initialValue: null);
+      expect(withNull.hasValue, isTrue);
+      expect(withNull.valueOrNull, isNull);
+
+      final withValue = EventStream<int>.fromStream(const Stream.empty(), initialValue: 3);
+      expect(withValue.valueOrNull, 3);
+
+      final nullOnNonNullable = EventStream<int>.fromStream(const Stream.empty(), initialValue: null);
+      expect(nullOnNonNullable.hasValue, isFalse);
+
+      omitted.close();
+      withNull.close();
+      withValue.close();
+      nullOnNonNullable.close();
+    });
+
+    test('fromStream with distinct', () async {
+      final sc = StreamController<int>();
+      final es = EventStream.fromStream(sc.stream, initialValue: 42, distinct: true);
+      expect(es.distinct, isTrue);
+
+      final values = <int>[];
+      final ss = es.listen(values.add);
+
+      sc.add(42);
+      sc.add(1);
+      sc.add(1);
+      await Future.delayed(const Duration(milliseconds: 1));
+      expect(values, [1]);
+
+      ss.cancel();
+      es.close();
     });
   });
 }

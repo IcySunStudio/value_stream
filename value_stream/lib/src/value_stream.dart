@@ -5,22 +5,22 @@ bool isNullable<T>() => null is T;
 
 /// Abstract base class for a broadcast [Stream] with access to the latest emitted value.
 abstract class ValueStream<T> implements Sink<T> {
-  ValueStream([T? initialValue]) {
-    if (initialValue != null || isNullable<T>()) {
-      _setValue(initialValue as T);
-    }
-  }
+  ValueStream({this.distinct = false});
 
   final _controller = StreamController<T>.broadcast();
 
+  /// Whether a value equal (==) to the current one is ignored by [add].
+  /// Note that adding the same instance again after mutating it is ignored too.
+  final bool distinct;
+
   /// Push [data] to the stream.
   /// Ignored if the stream is closed.
-  /// Ignored if [skipSame] is true and [data] == [valueOrNull].
+  /// Ignored if [distinct] is true and [data] == [valueOrNull].
   /// Return true if [data] was added.
   @override
-  bool add(T data, {bool skipSame = false}) {
+  bool add(T data) {
     if (_controller.isClosed) return false;
-    if (skipSame && hasValue && data == valueOrNull) return false;
+    if (distinct && hasValue && data == valueOrNull) return false;
 
     _setValue(data);
     _controller.add(data);
@@ -81,14 +81,19 @@ abstract class ValueStream<T> implements Sink<T> {
 /// A broadcast [Stream] with access to the latest emitted value.
 /// Does explicitly NOT handle errors to provide a direct and simple access to the [value].
 class DataStream<T> extends ValueStream<T> {
-  DataStream(T super.initialValue);
+  /// If [distinct] is true, values equal (==) to the current one are ignored.
+  DataStream(T initialValue, {super.distinct}) {
+    _setValue(initialValue);
+  }
 
   /// Creates a [DataStream] from a [Stream].
   /// Data emitted by [stream] will also be emitted by this [DataStream].
   /// Values can also be emitted 'manually' to this [DataStream] using regular methods.
   /// This [DataStream] will NOT be closed if [stream] is done: only the internal subscription will be cancelled when this [DataStream] is closed.
   /// If [onError] is provided, it will be called when an error is emitted by [stream]. Otherwise error events will be ignored.
-  DataStream.fromStream(Stream<T> stream, super.initialValue, {Function? onError}) {
+  /// If [distinct] is true, values equal (==) to the current one are ignored.
+  DataStream.fromStream(Stream<T> stream, T initialValue, {Function? onError, super.distinct}) {
+    _setValue(initialValue);
     _fromStreamSubscription = stream.listen(add, onError: onError ?? (e) {});
   }
 
@@ -124,13 +129,28 @@ class DataStream<T> extends ValueStream<T> {
 
 /// A broadcast [Stream] with access to the latest emitted value, with error handling.
 class EventStream<T> extends ValueStream<T> {
-  EventStream([super.initialValue]);
+  /// Creates an [EventStream] that already has a value, even if [initialValue] is null (for a nullable [T]).
+  /// If [distinct] is true, values equal (==) to the current one are ignored.
+  EventStream(T initialValue, {super.distinct}) {
+    _setValue(initialValue);
+  }
+
+  /// Creates an [EventStream] with no value, until the first value or error is emitted.
+  /// If [distinct] is true, values equal (==) to the current one are ignored.
+  EventStream.empty({super.distinct});
 
   /// Creates a [EventStream] from a [Stream].
   /// Data emitted by [stream] will also be emitted by this [EventStream].
   /// Values can also be emitted 'manually' to this [EventStream] using regular methods.
   /// This [EventStream] will NOT be closed if [stream] is done: only the internal subscription will be cancelled when this [EventStream] is closed.
-  EventStream.fromStream(Stream<T> stream, [super.initialValue]) {
+  /// The stream has no value until [stream] emits, unless [initialValue] is provided (even if null, for a nullable [T]).
+  /// If [distinct] is true, values equal (==) to the current one are ignored.
+  factory EventStream.fromStream(Stream<T> stream, {T? initialValue, bool distinct}) = EventStream<T>._fromStream;
+
+  EventStream._fromStream(Stream<T> stream, {Object? initialValue = _unset, bool? distinct}) : super(distinct: distinct ?? false) {
+    if (!identical(initialValue, _unset) && (initialValue != null || isNullable<T>())) {
+      _setValue(initialValue as T);
+    }
     _fromStreamSubscription = stream.listen(add, onError: addError);
   }
 
@@ -191,4 +211,11 @@ class EventSnapshot<T> {
   final Object? error;
   final StackTrace? stackTrace;
   bool get hasError => error != null;
+}
+
+/// Marks an omitted argument, to distinguish it from an explicit null.
+const _unset = _Unset();
+
+class _Unset {
+  const _Unset();
 }
