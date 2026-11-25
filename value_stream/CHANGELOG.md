@@ -1,3 +1,8 @@
+## 2.0.0
+* Fix `add()` changing the latest value before throwing when the stream is closed.
+* Fix `add(skipSame: true)` ignoring a `null` value on an `EventStream` that is in error state.
+* Fix `EventStream.addError()` updating its state after emitting the error, unlike `add()`.
+
 ## 1.1.1
 * New: `hasValue` getter on `ValueStream`, `DataStream`, and `EventStream` to distinguish "no value yet" from "current value is null".
 * Fix `first` hanging for nullable streams when the current value is `null`. The check now uses `hasValue` semantics instead of `valueOrNull != null`, correctly distinguishing "no value yet" from "current value is null".

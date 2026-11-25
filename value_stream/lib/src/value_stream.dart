@@ -20,8 +20,11 @@ abstract class ValueStream<T> implements Sink<T> {
   /// Return true if [value] was added.
   @override
   bool add(T data, {bool skipIfClosed = false, bool skipSame = false, bool skipNull = false}) {
-    if (skipIfClosed && _controller.isClosed) return false;
-    if (skipSame && data == valueOrNull) return false;
+    if (_controller.isClosed) {
+      if (skipIfClosed) return false;
+      throw StateError('Cannot add new events after calling close');
+    }
+    if (skipSame && hasValue && data == valueOrNull) return false;
     if (skipNull && data == null) return false;
 
     _setValue(data);
@@ -159,8 +162,10 @@ class EventStream<T> extends ValueStream<T> {
 
   /// Sends or enqueues an error event.
   void addError(Object error, [StackTrace? stackTrace]) {
-    _controller.addError(error, stackTrace);
+    if (_controller.isClosed) throw StateError('Cannot add new events after calling close');
+
     _latestSnapshot = EventSnapshot.withError(error, stackTrace);
+    _controller.addError(error, stackTrace);
   }
 
   /// Adds a subscription to this stream.

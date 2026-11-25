@@ -280,6 +280,31 @@ void main() {
       es.close();
     });
 
+    test('add(skipSame) does not ignore null when stream is in error', () {
+      final es = EventStream<int?>(null);
+      expect(es.add(null, skipSame: true), isFalse);
+
+      es.addError(Error());
+      expect(es.hasValue, isFalse);
+      expect(es.add(null, skipSame: true), isTrue);
+      expect(es.hasValue, isTrue);
+      expect(es.hasError, isFalse);
+
+      es.close();
+    });
+
+    test('add() and addError() on a closed stream keep the state untouched', () {
+      final es = EventStream(1);
+      es.close();
+
+      expect(() => es.add(2), throwsA(isA<StateError>()));
+      expect(es.valueOrNull, 1);
+
+      expect(() => es.addError(Error()), throwsA(isA<StateError>()));
+      expect(es.hasError, isFalse);
+      expect(es.valueOrNull, 1);
+    });
+
     test('updates error & value on addError() & add()', () {
       final es = EventStream(42);
       expect(es.valueOrNull, 42);
